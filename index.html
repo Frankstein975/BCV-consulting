@@ -3,34 +3,50 @@
 <head>
   <meta charset="UTF-8">
   <title>BCV Rates</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
   <style>
+    * {
+      box-sizing: border-box;
+    }
+
     body {
       margin: 0;
       background: black;
       color: white;
       font-family: Arial, sans-serif;
+      min-height: 100vh;
       display: flex;
       justify-content: center;
       align-items: center;
-      height: 100vh;
+      padding: 20px;
     }
 
     .app {
-      width: 320px;
+      width: 100%;
+      max-width: 360px;
       text-align: center;
     }
 
     .rate {
-      font-size: 24px;
-      margin: 10px 0;
+      font-size: clamp(20px, 6vw, 26px);
+      margin: 12px 0;
     }
 
     button {
-      margin-top: 10px;
-      padding: 10px;
+      margin-top: 15px;
+      padding: 12px;
       width: 100%;
       font-size: 16px;
       cursor: pointer;
+      border: none;
+      background: white;
+      color: black;
+      font-weight: bold;
+    }
+
+    button:active {
+      opacity: 0.8;
     }
 
     .update {
@@ -43,34 +59,64 @@
       margin-top: 15px;
       background: #111;
       border: 1px solid #333;
-      padding: 8px;
+      padding: 10px;
       font-size: 12px;
-      height: 120px;
+      height: 140px;
       overflow-y: auto;
       text-align: left;
       color: #0f0;
+    }
+
+    @media (min-height: 700px) {
+      .log {
+        height: 180px;
+      }
     }
   </style>
 </head>
 <body>
 
-  <div class="app">
-    <div class="rate">USD: <span id="usd">-</span> Bs</div>
-    <div class="rate">EUR: <span id="eur">-</span> Bs</div>
+<div class="app">
+  <div class="rate">USD: <span id="usd">-</span> Bs</div>
+  <div class="rate">EUR: <span id="eur">-</span> Bs</div>
 
-    <button onclick="fetchRates()">Actualizar</button>
+  <button onclick="fetchRates()">Actualizar</button>
 
-    <div class="update" id="update"></div>
+  <div class="update" id="update"></div>
 
-    <div class="log" id="log"></div>
-  </div>
+  <div class="log" id="log"></div>
+</div>
 
 <script>
   const logBox = document.getElementById("log");
+  const usdEl = document.getElementById("usd");
+  const eurEl = document.getElementById("eur");
+  const updateEl = document.getElementById("update");
 
   function log(msg) {
     const time = new Date().toLocaleTimeString();
     logBox.innerHTML = `[${time}] ${msg}<br>` + logBox.innerHTML;
+  }
+
+  function saveData(usd, eur, date) {
+    localStorage.setItem("usd", usd);
+    localStorage.setItem("eur", eur);
+    localStorage.setItem("updatedAt", date);
+  }
+
+  function loadData() {
+    const usd = localStorage.getItem("usd");
+    const eur = localStorage.getItem("eur");
+    const date = localStorage.getItem("updatedAt");
+
+    if (usd && eur && date) {
+      usdEl.textContent = usd;
+      eurEl.textContent = eur;
+      updateEl.textContent = "Última actualización: " + date;
+      log("Datos cargados desde almacenamiento local");
+    } else {
+      log("No hay datos guardados");
+    }
   }
 
   async function fetchRates() {
@@ -84,21 +130,27 @@
       const parser = new DOMParser();
       const doc = parser.parseFromString(html, "text/html");
 
-      const usd = doc.querySelector("#dolar .centrado strong")?.textContent;
-      const eur = doc.querySelector("#euro .centrado strong")?.textContent;
+      const usd = doc.querySelector("#dolar .centrado strong")?.textContent?.trim();
+      const eur = doc.querySelector("#euro .centrado strong")?.textContent?.trim();
 
       if (!usd || !eur) throw "No se encontraron valores";
 
-      document.getElementById("usd").textContent = usd.trim();
-      document.getElementById("eur").textContent = eur.trim();
-      document.getElementById("update").textContent =
-        "Última actualización: " + new Date().toLocaleString();
+      const date = new Date().toLocaleString();
 
-      log("Datos actualizados correctamente");
+      usdEl.textContent = usd;
+      eurEl.textContent = eur;
+      updateEl.textContent = "Última actualización: " + date;
+
+      saveData(usd, eur, date);
+
+      log("Datos actualizados y guardados");
     } catch (e) {
-      log("Error obteniendo datos");
+      log("Error obteniendo datos del BCV");
     }
   }
+
+  // Cargar datos guardados al iniciar
+  loadData();
 </script>
 
 </body>
