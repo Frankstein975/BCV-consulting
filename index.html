@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>BCV Rates</title>
+  <style>
+    body {
+      margin: 0;
+      background: black;
+      color: white;
+      font-family: Arial, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+
+    .app {
+      width: 320px;
+      text-align: center;
+    }
+
+    .rate {
+      font-size: 24px;
+      margin: 10px 0;
+    }
+
+    button {
+      margin-top: 10px;
+      padding: 10px;
+      width: 100%;
+      font-size: 16px;
+      cursor: pointer;
+    }
+
+    .update {
+      margin-top: 10px;
+      font-size: 12px;
+      color: #aaa;
+    }
+
+    .log {
+      margin-top: 15px;
+      background: #111;
+      border: 1px solid #333;
+      padding: 8px;
+      font-size: 12px;
+      height: 120px;
+      overflow-y: auto;
+      text-align: left;
+      color: #0f0;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="app">
+    <div class="rate">USD: <span id="usd">-</span> Bs</div>
+    <div class="rate">EUR: <span id="eur">-</span> Bs</div>
+
+    <button onclick="fetchRates()">Actualizar</button>
+
+    <div class="update" id="update"></div>
+
+    <div class="log" id="log"></div>
+  </div>
+
+<script>
+  const logBox = document.getElementById("log");
+
+  function log(msg) {
+    const time = new Date().toLocaleTimeString();
+    logBox.innerHTML = `[${time}] ${msg}<br>` + logBox.innerHTML;
+  }
+
+  async function fetchRates() {
+    log("Solicitando datos del BCV...");
+
+    try {
+      const url = "https://api.allorigins.win/raw?url=https://www.bcv.org.ve/";
+      const res = await fetch(url);
+      const html = await res.text();
+
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, "text/html");
+
+      const usd = doc.querySelector("#dolar .centrado strong")?.textContent;
+      const eur = doc.querySelector("#euro .centrado strong")?.textContent;
+
+      if (!usd || !eur) throw "No se encontraron valores";
+
+      document.getElementById("usd").textContent = usd.trim();
+      document.getElementById("eur").textContent = eur.trim();
+      document.getElementById("update").textContent =
+        "Última actualización: " + new Date().toLocaleString();
+
+      log("Datos actualizados correctamente");
+    } catch (e) {
+      log("Error obteniendo datos");
+    }
+  }
+</script>
+
+</body>
+</html>
