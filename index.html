@@ -2,37 +2,38 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>BCV Monitor</title>
+  <title>BCV Monitor Oficial</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
-    body { background: #050505; color: #eee; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
-    .app { width: 90%; max-width: 340px; background: #111; padding: 25px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); border: 1px solid #222; text-align: center; }
-    .card { background: #1a1a1a; padding: 15px; border-radius: 12px; margin-bottom: 15px; border-bottom: 3px solid #333; }
+    body { background: #050505; color: #eee; font-family: 'Segoe UI', sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
+    .app { width: 90%; max-width: 340px; background: #111; padding: 25px; border-radius: 24px; box-shadow: 0 20px 50px rgba(0,0,0,0.7); border: 1px solid #222; text-align: center; }
+    .card { background: #1a1a1a; padding: 18px; border-radius: 16px; margin-bottom: 15px; border-left: 5px solid #333; transition: 0.3s; }
     .usd { border-color: #2ecc71; }
-    .eur { border-color: #3498db; }
-    .label { font-size: 12px; color: #888; letter-spacing: 1px; }
-    .value { font-size: 32px; font-weight: bold; margin: 5px 0; display: block; }
-    button { width: 100%; padding: 14px; border: none; border-radius: 10px; background: #fff; color: #000; font-weight: bold; cursor: pointer; transition: 0.2s; }
-    button:active { transform: scale(0.98); opacity: 0.8; }
-    .status { font-size: 11px; color: #555; margin-top: 15px; }
-    .console { font-family: monospace; font-size: 10px; color: #0f0; background: #000; padding: 10px; border-radius: 8px; margin-top: 15px; height: 80px; overflow-y: auto; text-align: left; border: 1px solid #222; }
+    .eur { border-color: #f1c40f; }
+    .label { font-size: 11px; color: #888; letter-spacing: 2px; font-weight: bold; }
+    .value { font-size: 28px; font-weight: bold; margin: 5px 0; color: #fff; }
+    button { width: 100%; padding: 14px; border: none; border-radius: 12px; background: #fff; color: #000; font-weight: bold; cursor: pointer; margin-top: 10px; }
+    .status { font-size: 12px; color: #2ecc71; margin-top: 15px; font-weight: 500; }
+    .fecha-valor { font-size: 11px; color: #666; margin-top: 5px; }
+    .console { font-family: monospace; font-size: 9px; color: #444; background: #000; padding: 8px; border-radius: 8px; margin-top: 15px; height: 60px; overflow-y: auto; text-align: left; border: 1px solid #111; }
   </style>
 </head>
 <body>
 
 <div class="app">
   <div class="card eur">
-    <span class="label">EURO</span>
-    <span id="eur" class="value">---</span>
+    <span class="label">EURO (EUR)</span>
+    <span id="eur" class="value">0,00</span>
   </div>
   <div class="card usd">
-    <span class="label">DÓLAR USD</span>
-    <span id="usd" class="value">---</span>
+    <span class="label">DÓLAR (USD)</span>
+    <span id="usd" class="value">0,00</span>
   </div>
 
   <button onclick="fetchRates()">ACTUALIZAR</button>
   
-  <div id="status" class="status">Sin datos</div>
+  <div id="status" class="status">Sincronizando...</div>
+  <div id="fecha" class="fecha-valor">---</div>
   <div id="console" class="console">Iniciando sistema...</div>
 </div>
 
@@ -40,12 +41,16 @@
   const logBox = document.getElementById('console');
   
   function log(msg) {
+    const t = new Date().toLocaleTimeString();
     logBox.innerHTML = `> ${msg}<br>` + logBox.innerHTML;
   }
 
   async function fetchRates() {
-    log("Consultando BCV...");
+    log("Solicitando datos a Jina...");
+    document.getElementById('status').innerText = "Cargando...";
+    
     const target = "https://r.jina.ai/https://www.bcv.org.ve/";
+    // Usamos el proxy para evitar CORS
     const url = `https://api.allorigins.win/get?url=${encodeURIComponent(target)}&timestamp=${new Date().getTime()}`;
 
     try {
@@ -53,43 +58,41 @@
       const data = await resp.json();
       const rawText = data.contents;
 
-      // EXTRACCIÓN ROBUSTA:
-      // 1. Buscamos la posición de la palabra clave
-      // 2. Cortamos el texto desde ahí
-      // 3. Buscamos el primer número con formato "00,00"
-      
-      const getVal = (currencyLabel, text) => {
-        const index = text.toUpperCase().indexOf(currencyLabel);
-        if (index === -1) return null;
-        
-        // Cortamos los siguientes 100 caracteres después de la etiqueta (USD o EUR)
-        const subText = text.substring(index, index + 150);
-        // Buscamos el patrón del número (dígitos seguido de coma y más dígitos)
-        const match = subText.match(/(\d+,\d+)/);
-        return match ? match[1] : null;
+      // 1. Extraer Fecha Valor
+      const fechaMatch = rawText.match(/Fecha Valor:\s*([^*#\n]+)/i);
+      if (fechaMatch) {
+          document.getElementById('fecha').innerText = "Vigencia: " + fechaMatch[1].trim();
+      }
+
+      // 2. Extraer Valores (Busca la moneda y luego el primer bloque entre asteriscos)
+      const extract = (coin, text) => {
+          // Buscamos la moneda y capturamos todo lo que sigue hasta encontrar el patrón **número**
+          const regex = new RegExp(`${coin}[\\s\\S]*?\\*\\*([\\d,.]+)\\*\\*`, "i");
+          const match = text.match(regex);
+          return match ? match[1] : null;
       };
 
-      const usdValue = getVal("USD", rawText);
-      const eurValue = getVal("EURO", rawText);
+      const usdValue = extract("USD", rawText);
+      const eurValue = extract("EUR", rawText);
 
       if (usdValue && eurValue) {
         document.getElementById('usd').innerText = usdValue;
         document.getElementById('eur').innerText = eurValue;
-        document.getElementById('status').innerText = "Vigente: " + new Date().toLocaleString();
-        log("¡Éxito! Datos vinculados.");
+        document.getElementById('status').innerText = "● CONECTADO";
+        log("Sincronización exitosa.");
       } else {
-        log("Error: No se encontró el patrón de moneda.");
-        console.log("Texto de Jina:", rawText); // Para debug en consola F12
+        throw new Error("No se hallaron los valores numéricos.");
       }
 
     } catch (e) {
-      log("Error de red o CORS.");
-      console.error(e);
+      log("Error: " + e.message);
+      document.getElementById('status').innerText = "ERROR DE CONEXIÓN";
+      document.getElementById('status').style.color = "#e74c3c";
     }
   }
 
-  // Ejecutar al cargar
-  fetchRates();
+  // ESTO HACE QUE SE CARGUE AL ABRIR LA PÁGINA
+  window.onload = fetchRates;
 </script>
 
 </body>
