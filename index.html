@@ -70,7 +70,7 @@
       document.getElementById('usd').innerText = cU;
       document.getElementById('eur').innerText = cE;
       document.getElementById('fecha').innerText = cD;
-      log("Caché local cargada.");
+      log("Datos locales cargados.");
     }
     fetchRates();
   }
@@ -82,12 +82,12 @@
     
     dot.className = "dot loading";
     fechaEl.innerText = "Consultando...";
-    log("Iniciando secuencia de sincronización...");
+    log("Iniciando consulta optimizada...");
 
-    // Lista priorizada: CorsProxy es generalmente el más rápido para este caso
+    // NUEVO ORDEN: Primero CorsProxy.io (visto que funciona rápido en tu log)
     const proxies = [
-      { name: "CorsProxy.io (Primario)", url: `https://corsproxy.io/?${encodeURIComponent(target)}` },
-      { name: "AllOrigins (Respaldo)", url: `https://api.allorigins.win/raw?url=${encodeURIComponent(target)}&t=${Date.now()}` },
+      { name: "CorsProxy.io", url: `https://corsproxy.io/?${encodeURIComponent(target)}` },
+      { name: "AllOrigins (Raw)", url: `https://api.allorigins.win/raw?url=${encodeURIComponent(target)}&t=${Date.now()}` },
       { name: "ThingProxy", url: `https://thingproxy.freeboard.io/fetch/${target}` }
     ];
 
@@ -96,27 +96,30 @@
     for (let proxy of proxies) {
       if (success) break;
       try {
-        log(`Intentando vía ${proxy.name}...`);
+        log(`Probando ruta: ${proxy.name}...`);
         
-        // Añadimos un timeout corto para no esperar demasiado a un proxy lento
+        // TIMEOUT DE 4 SEGUNDOS: Para evitar esperas de 20s como en tu log anterior
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 8000);
+        const timeout = setTimeout(() => controller.abort(), 4000);
 
         const response = await fetch(proxy.url, { signal: controller.signal });
-        clearTimeout(timeoutId);
+        clearTimeout(timeout);
         
-        if (!response.ok) throw new Error();
+        if (!response.ok) {
+          log(`Fallo en ${proxy.name}. Saltando...`);
+          continue;
+        }
 
         const html = await response.text();
-        
-        // Regex mejorada para capturar el valor numérico tras el ID correspondiente
+        log(`Respuesta recibida (${Math.round(html.length / 1024)} KB).`);
+
         const usdMatch = html.match(/id="dolar"[\s\S]*?strong>\s*([\d,.]+)/i);
         const eurMatch = html.match(/id="euro"[\s\S]*?strong>\s*([\d,.]+)/i);
 
         if (usdMatch && eurMatch) {
           const u = usdMatch[1].trim();
           const e = eurMatch[1].trim();
-          const f = "Vigencia BCV: " + new Date().toLocaleString('es-VE', { hour12: true });
+          const f = "Vigencia: " + new Date().toLocaleString('es-VE', { hour12: true });
 
           document.getElementById('usd').innerText = u;
           document.getElementById('eur').innerText = e;
@@ -127,20 +130,18 @@
           localStorage.setItem('v_d', f);
 
           dot.className = "dot online";
-          log("¡Éxito! Datos sincronizados.");
+          log("¡Sincronización exitosa!");
           success = true;
-        } else {
-          log("Estructura de datos no encontrada.");
         }
       } catch (err) {
-        log(`Fallo en ruta ${proxy.name}.`);
+        log(`Ruta ${proxy.name} descartada por lentitud o error.`);
       }
     }
 
     if (!success) {
       dot.className = "dot";
-      fechaEl.innerText = "Error de conexión.";
-      log("ERROR: No se pudo conectar con el BCV.");
+      fechaEl.innerText = "Error general de red.";
+      log("CRÍTICO: No se pudo obtener respuesta de ninguna ruta.");
     }
   }
 
