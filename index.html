@@ -2,113 +2,85 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>BCV Rates via Jina AI</title>
+  <title>BCV Rates - Fixed</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
-    /* Tu estilo se mantiene igual */
-    * { box-sizing: border-box; }
-    body { margin: 0; background: black; color: white; font-family: Arial, sans-serif; min-height: 100vh; display: flex; justify-content: center; align-items: center; padding: 20px; }
-    .app { width: 100%; max-width: 360px; text-align: center; }
-    .rate { font-size: clamp(20px, 6vw, 26px); margin: 12px 0; }
-    button { margin-top: 15px; padding: 12px; width: 100%; font-size: 16px; cursor: pointer; border: none; background: white; color: black; font-weight: bold; }
-    button:active { opacity: 0.8; }
-    .update { margin-top: 10px; font-size: 12px; color: #aaa; }
-    .log { margin-top: 15px; background: #111; border: 1px solid #333; padding: 10px; font-size: 12px; height: 140px; overflow-y: auto; text-align: left; color: #0f0; }
+    body { background: #000; color: #fff; font-family: sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
+    .app { width: 100%; max-width: 350px; text-align: center; border: 1px solid #333; padding: 20px; border-radius: 10px; }
+    .rate { font-size: 24px; margin: 15px 0; font-weight: bold; }
+    .rate span { color: #0f0; }
+    button { width: 100%; padding: 12px; cursor: pointer; background: #fff; border: none; font-weight: bold; margin-bottom: 10px; }
+    .update { font-size: 11px; color: #888; margin-top: 10px; }
+    .log { font-size: 10px; color: #0f0; background: #111; padding: 10px; height: 80px; overflow-y: auto; text-align: left; margin-top: 10px; border: 1px solid #222; }
   </style>
 </head>
 <body>
 
 <div class="app">
-  <div class="rate">USD: <span id="usd">-</span> Bs</div>
-  <div class="rate">EUR: <span id="eur">-</span> Bs</div>
+  <div class="rate">USD: <span id="usd">0,00</span> Bs</div>
+  <div class="rate">EUR: <span id="eur">0,00</span> Bs</div>
 
-  <button onclick="fetchRates()">Actualizar con Jina AI</button>
+  <button onclick="fetchRates()">Actualizar BCV</button>
 
-  <div class="update" id="update"></div>
-  <div class="log" id="log"></div>
+  <div id="update" class="update">Presiona actualizar</div>
+  <div id="log" class="log">Esperando orden...</div>
 </div>
 
 <script>
-  const logBox = document.getElementById("log");
-  const usdEl = document.getElementById("usd");
-  const eurEl = document.getElementById("eur");
-  const updateEl = document.getElementById("update");
-
+  const logEl = document.getElementById('log');
+  
   function log(msg) {
-    const time = new Date().toLocaleTimeString();
-    logBox.innerHTML = `[${time}] ${msg}<br>` + logBox.innerHTML;
-  }
-
-  function saveData(usd, eur, date) {
-    localStorage.setItem("usd", usd);
-    localStorage.setItem("eur", eur);
-    localStorage.setItem("updatedAt", date);
-  }
-
-  function loadData() {
-    const usd = localStorage.getItem("usd");
-    const eur = localStorage.getItem("eur");
-    const date = localStorage.getItem("updatedAt");
-    if (usd && eur && date) {
-      usdEl.textContent = usd;
-      eurEl.textContent = eur;
-      updateEl.textContent = "Última actualización: " + date;
-      log("Datos cargados de caché");
-    }
+    logEl.innerHTML = `> ${msg}<br>${logEl.innerHTML}`;
   }
 
   async function fetchRates() {
-    log("Conectando a r.jina.ai...");
+    log("Iniciando consulta...");
     
+    // Usamos allorigins para evitar el error de CORS
+    const targetUrl = "https://r.jina.ai/https://www.bcv.org.ve/";
+    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`;
+
     try {
-      // Usamos el proxy de Jina directamente
-      const url = "https://r.jina.ai/https://www.bcv.org.ve/";
+      const response = await fetch(proxyUrl);
+      if (!response.ok) throw new Error("Error en el proxy");
       
-      const res = await fetch(url);
-      if (!res.ok) throw new Error("Error en respuesta de red");
-      
-      const text = await res.text();
+      const data = await response.json();
+      const content = data.contents; // Aquí está el texto de Jina
 
-      // Buscamos los valores usando Regex basándonos en la estructura de Jina
-      // Jina suele renderizar: "Euro ... valor" y "Dólar ... valor"
-      const usdMatch = text.match(/Dólar de la BCV\s*([\d,.]+)/i) || text.match(/USD\s*([\d,.]+)/i);
-      const eurMatch = text.match(/Euro\s*([\d,.]+)/i) || text.match(/EUR\s*([\d,.]+)/i);
+      // Regex específicos para el formato de Jina del BCV
+      // Buscamos "USD" o "Dólar" seguido de un número con coma
+      const usdMatch = content.match(/(?:USD|Dólar|Dolar)[^\d]+(\d+,\d+)/i);
+      const eurMatch = content.match(/(?:EUR|Euro)[^\d]+(\d+,\d+)/i);
 
-      let usd = usdMatch ? usdMatch[1].trim() : null;
-      let eur = eurMatch ? eurMatch[1].trim() : null;
+      if (usdMatch && eurMatch) {
+        const usd = usdMatch[1];
+        const eur = eurMatch[1];
 
-      // Si falla el regex específico, intentamos uno más genérico por posición
-      if (!usd) {
-          log("Reintentando extracción genérica...");
-          // El BCV suele poner los valores después de las etiquetas de moneda
-          const values = text.match(/\d+,\d+/g); 
-          if(values && values.length >= 5) {
-              eur = values[0];
-              usd = values[4]; // El dólar suele ser el último de la lista principal
-          }
+        document.getElementById('usd').textContent = usd;
+        document.getElementById('eur').textContent = eur;
+        document.getElementById('update').textContent = "Última actualización: " + new Date().toLocaleString();
+        
+        log(`Éxito: USD ${usd}`);
+      } else {
+        log("No se detectaron números. Reintentando método alterno...");
+        // Intento 2: Buscar cualquier número con coma que parezca tasa
+        const genericMatches = content.match(/\d+,\d{2,4}/g);
+        if (genericMatches && genericMatches.length >= 2) {
+            document.getElementById('eur').textContent = genericMatches[0];
+            document.getElementById('usd').textContent = genericMatches[genericMatches.length - 1];
+            log("Extraído por posición genérica.");
+        } else {
+            throw new Error("Formato de página no reconocido");
+        }
       }
-
-      if (!usd || !eur) {
-        log("Error: Formato de datos no reconocido");
-        return;
-      }
-
-      const date = new Date().toLocaleString();
-      usdEl.textContent = usd;
-      eurEl.textContent = eur;
-      updateEl.textContent = "Actualizado: " + date;
-
-      saveData(usd, eur, date);
-      log(`¡Éxito! USD: ${usd}`);
-
-    } catch (e) {
-      log("Error: " + e.message);
-      console.error(e);
+    } catch (error) {
+      log("ERROR: " + error.message);
+      console.error(error);
     }
   }
-
-  loadData();
 </script>
+</body>
+</html>
 
 </body>
 </html>
