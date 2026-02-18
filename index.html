@@ -2,87 +2,95 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>BCV Rates - Exact Match</title>
+  <title>BCV Monitor</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
-    body { background: #000; color: #fff; font-family: 'Segoe UI', sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
-    .app { width: 100%; max-width: 350px; text-align: center; border: 1px solid #333; padding: 25px; border-radius: 15px; background: #0a0a0a; }
-    .rate-card { background: #111; padding: 15px; border-radius: 8px; margin: 10px 0; border-left: 4px solid #0f0; }
-    .label { font-size: 14px; color: #888; text-transform: uppercase; }
-    .value { font-size: 28px; font-weight: bold; color: #fff; display: block; }
-    button { width: 100%; padding: 15px; cursor: pointer; background: #fff; border: none; font-weight: bold; border-radius: 8px; transition: 0.3s; }
-    button:hover { background: #ccc; }
-    .update { font-size: 11px; color: #666; margin-top: 15px; }
-    .log { font-size: 10px; color: #0f0; background: #000; padding: 10px; height: 100px; overflow-y: auto; text-align: left; margin-top: 15px; border: 1px solid #222; font-family: monospace; }
+    body { background: #050505; color: #eee; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
+    .app { width: 90%; max-width: 340px; background: #111; padding: 25px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); border: 1px solid #222; text-align: center; }
+    .card { background: #1a1a1a; padding: 15px; border-radius: 12px; margin-bottom: 15px; border-bottom: 3px solid #333; }
+    .usd { border-color: #2ecc71; }
+    .eur { border-color: #3498db; }
+    .label { font-size: 12px; color: #888; letter-spacing: 1px; }
+    .value { font-size: 32px; font-weight: bold; margin: 5px 0; display: block; }
+    button { width: 100%; padding: 14px; border: none; border-radius: 10px; background: #fff; color: #000; font-weight: bold; cursor: pointer; transition: 0.2s; }
+    button:active { transform: scale(0.98); opacity: 0.8; }
+    .status { font-size: 11px; color: #555; margin-top: 15px; }
+    .console { font-family: monospace; font-size: 10px; color: #0f0; background: #000; padding: 10px; border-radius: 8px; margin-top: 15px; height: 80px; overflow-y: auto; text-align: left; border: 1px solid #222; }
   </style>
 </head>
 <body>
 
 <div class="app">
-  <div class="rate-card">
-    <span class="label">Dólar (USD)</span>
-    <span id="usd" class="value">0,00</span>
+  <div class="card eur">
+    <span class="label">EURO</span>
+    <span id="eur" class="value">---</span>
   </div>
-  <div class="rate-card" style="border-left-color: #007bff;">
-    <span class="label">Euro (EUR)</span>
-    <span id="eur" class="value">0,00</span>
+  <div class="card usd">
+    <span class="label">DÓLAR USD</span>
+    <span id="usd" class="value">---</span>
   </div>
 
-  <button onclick="fetchRates()">ACTUALIZAR DATOS</button>
-
-  <div id="update" class="update">Esperando actualización...</div>
-  <div id="log" class="log">Consola lista...</div>
+  <button onclick="fetchRates()">ACTUALIZAR</button>
+  
+  <div id="status" class="status">Sin datos</div>
+  <div id="console" class="console">Iniciando sistema...</div>
 </div>
 
 <script>
-  const logEl = document.getElementById('log');
+  const logBox = document.getElementById('console');
   
   function log(msg) {
-    const t = new Date().toLocaleTimeString();
-    logEl.innerHTML = `[${t}] ${msg}<br>${logEl.innerHTML}`;
+    logBox.innerHTML = `> ${msg}<br>` + logBox.innerHTML;
   }
 
   async function fetchRates() {
-    log("Conectando con BCV via Jina...");
-    
-    const targetUrl = "https://r.jina.ai/https://www.bcv.org.ve/";
-    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`;
+    log("Consultando BCV...");
+    const target = "https://r.jina.ai/https://www.bcv.org.ve/";
+    const url = `https://api.allorigins.win/get?url=${encodeURIComponent(target)}&timestamp=${new Date().getTime()}`;
 
     try {
-      const response = await fetch(proxyUrl);
-      const data = await response.json();
-      const text = data.contents;
+      const resp = await fetch(url);
+      const data = await resp.json();
+      const rawText = data.contents;
 
-      /* EXPLICACIÓN DEL REGEX:
-         (?:\*\*USD\*\*|\*\*DÓLAR\*\*) -> Busca la etiqueta USD o DÓLAR entre asteriscos.
-         [\s\S]*? -> Salta cualquier caracter (espacios, saltos de línea) de forma no ambiciosa.
-         \*\*(\d+,\d+)\*\* -> Captura el primer número con coma que esté entre dobles asteriscos.
-      */
-      const usdRegex = /(?:\*\*USD\*\*|\*\*DÓLAR\*\*)[\s\S]*?\*\*(\d+,\d+)\*\*/i;
-      const eurRegex = /(?:\*\*EUR\*\*|\*\*EURO\*\*)[\s\S]*?\*\*(\d+,\d+)\*\*/i;
+      // EXTRACCIÓN ROBUSTA:
+      // 1. Buscamos la posición de la palabra clave
+      // 2. Cortamos el texto desde ahí
+      // 3. Buscamos el primer número con formato "00,00"
+      
+      const getVal = (currencyLabel, text) => {
+        const index = text.toUpperCase().indexOf(currencyLabel);
+        if (index === -1) return null;
+        
+        // Cortamos los siguientes 100 caracteres después de la etiqueta (USD o EUR)
+        const subText = text.substring(index, index + 150);
+        // Buscamos el patrón del número (dígitos seguido de coma y más dígitos)
+        const match = subText.match(/(\d+,\d+)/);
+        return match ? match[1] : null;
+      };
 
-      const usdMatch = text.match(usdRegex);
-      const eurMatch = text.match(eurRegex);
+      const usdValue = getVal("USD", rawText);
+      const eurValue = getVal("EURO", rawText);
 
-      if (usdMatch && eurMatch) {
-        document.getElementById('usd').textContent = usdMatch[1];
-        document.getElementById('eur').textContent = eurMatch[1];
-        document.getElementById('update').textContent = "Sincronizado: " + new Date().toLocaleString();
-        log("¡Valores extraídos correctamente!");
+      if (usdValue && eurValue) {
+        document.getElementById('usd').innerText = usdValue;
+        document.getElementById('eur').innerText = eurValue;
+        document.getElementById('status').innerText = "Vigente: " + new Date().toLocaleString();
+        log("¡Éxito! Datos vinculados.");
       } else {
-        log("Error: No se encontró el formato **valor** después de la moneda.");
-        // Debug por si Jina cambia el formato a negritas simples o sin ellas
-        console.log("Contenido recibido:", text);
+        log("Error: No se encontró el patrón de moneda.");
+        console.log("Texto de Jina:", rawText); // Para debug en consola F12
       }
 
-    } catch (error) {
-      log("ERROR DE CONEXIÓN");
-      console.error(error);
+    } catch (e) {
+      log("Error de red o CORS.");
+      console.error(e);
     }
   }
+
+  // Ejecutar al cargar
+  fetchRates();
 </script>
-</body>
-</html>
 
 </body>
 </html>
