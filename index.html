@@ -7,15 +7,17 @@
   <style>
     body { background: #050505; color: #eee; font-family: 'Segoe UI', sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
     .app { width: 90%; max-width: 340px; background: #111; padding: 25px; border-radius: 24px; box-shadow: 0 20px 50px rgba(0,0,0,0.7); border: 1px solid #222; text-align: center; }
-    .card { background: #1a1a1a; padding: 18px; border-radius: 16px; margin-bottom: 15px; border-left: 5px solid #333; transition: 0.3s; }
+    .card { background: #1a1a1a; padding: 18px; border-radius: 16px; margin-bottom: 15px; border-left: 5px solid #333; transition: 0.3s; position: relative; overflow: hidden; }
     .usd { border-color: #2ecc71; }
     .eur { border-color: #f1c40f; }
     .label { font-size: 11px; color: #888; letter-spacing: 2px; font-weight: bold; }
-    .value { font-size: 28px; font-weight: bold; margin: 5px 0; color: #fff; }
-    button { width: 100%; padding: 14px; border: none; border-radius: 12px; background: #fff; color: #000; font-weight: bold; cursor: pointer; margin-top: 10px; }
-    .status { font-size: 12px; color: #2ecc71; margin-top: 15px; font-weight: 500; }
-    .fecha-valor { font-size: 11px; color: #666; margin-top: 5px; }
-    .console { font-family: monospace; font-size: 9px; color: #444; background: #000; padding: 8px; border-radius: 8px; margin-top: 15px; height: 60px; overflow-y: auto; text-align: left; border: 1px solid #111; }
+    .value { font-size: 28px; font-weight: bold; margin: 5px 0; color: #fff; display: block; }
+    button { width: 100%; padding: 14px; border: none; border-radius: 12px; background: #fff; color: #000; font-weight: bold; cursor: pointer; margin-top: 10px; transition: 0.2s; }
+    button:hover { background: #ddd; }
+    .status { font-size: 12px; color: #2ecc71; margin-top: 15px; font-weight: 500; display: flex; align-items: center; justify-content: center; gap: 5px; }
+    .dot { width: 8px; height: 8px; background: #2ecc71; border-radius: 50%; display: inline-block; }
+    .fecha-valor { font-size: 11px; color: #666; margin-top: 5px; font-style: italic; }
+    .console { font-family: monospace; font-size: 9px; color: #444; background: #000; padding: 8px; border-radius: 8px; margin-top: 15px; height: 70px; overflow-y: auto; text-align: left; border: 1px solid #111; }
   </style>
 </head>
 <body>
@@ -23,17 +25,17 @@
 <div class="app">
   <div class="card eur">
     <span class="label">EURO (EUR)</span>
-    <span id="eur" class="value">0,00</span>
+    <span id="eur" class="value">---</span>
   </div>
   <div class="card usd">
     <span class="label">DÓLAR (USD)</span>
-    <span id="usd" class="value">0,00</span>
+    <span id="usd" class="value">---</span>
   </div>
 
-  <button onclick="fetchRates()">ACTUALIZAR</button>
+  <button onclick="fetchRates()">ACTUALIZAR AHORA</button>
   
-  <div id="status" class="status">Sincronizando...</div>
-  <div id="fecha" class="fecha-valor">---</div>
+  <div id="status" class="status"><span class="dot"></span> LISTO</div>
+  <div id="fecha" class="fecha-valor">Sincronizando fecha...</div>
   <div id="console" class="console">Iniciando sistema...</div>
 </div>
 
@@ -46,53 +48,71 @@
   }
 
   async function fetchRates() {
-    log("Solicitando datos a Jina...");
-    document.getElementById('status').innerText = "Cargando...";
+    log("Conectando con r.jina.ai...");
+    document.getElementById('status').innerHTML = '<span class="dot" style="background:#f1c40f"></span> CARGANDO...';
     
-    const target = "https://r.jina.ai/https://www.bcv.org.ve/";
-    // Usamos el proxy para evitar CORS
-    const url = `https://api.allorigins.win/get?url=${encodeURIComponent(target)}&timestamp=${new Date().getTime()}`;
+    const targetUrl = "https://r.jina.ai/https://www.bcv.org.ve/";
+    
+    // Intentamos con dos proxys por si uno falla (CORS fallback)
+    const proxies = [
+      `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}&cache=${Date.now()}`,
+      `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`
+    ];
 
-    try {
-      const resp = await fetch(url);
-      const data = await resp.json();
-      const rawText = data.contents;
+    let success = false;
 
-      // 1. Extraer Fecha Valor
-      const fechaMatch = rawText.match(/Fecha Valor:\s*([^*#\n]+)/i);
-      if (fechaMatch) {
-          document.getElementById('fecha').innerText = "Vigencia: " + fechaMatch[1].trim();
+    for (let url of proxies) {
+      if (success) break;
+      
+      try {
+        log(`Probando ruta de acceso...`);
+        const resp = await fetch(url);
+        let rawText = "";
+
+        if (url.includes("allorigins")) {
+          const data = await resp.json();
+          rawText = data.contents;
+        } else {
+          rawText = await resp.text();
+        }
+
+        if (!rawText || rawText.length < 100) continue;
+
+        // --- EXTRACCIÓN CON REGEX MEJORADO ---
+        // Busca la moneda y captura el primer número entre asteriscos que aparezca después
+        const usdMatch = rawText.match(/USD[\s\S]*?\*\*([\d,.]+)\*\*/i);
+        const eurMatch = rawText.match(/EUR[\s\S]*?\*\*([\d,.]+)\*\*/i);
+        const fechaMatch = rawText.match(/Fecha Valor:\s*([^*#\n]+)/i);
+
+        if (usdMatch && eurMatch) {
+          document.getElementById('usd').innerText = usdMatch[1].trim();
+          document.getElementById('eur').innerText = eurMatch[1].trim();
+          
+          if (fechaMatch) {
+            document.getElementById('fecha').innerText = "Vigencia: " + fechaMatch[1].trim();
+          }
+
+          document.getElementById('status').innerHTML = '<span class="dot"></span> EN LÍNEA';
+          document.getElementById('status').style.color = "#2ecc71";
+          log("Datos actualizados con éxito.");
+          success = true;
+        }
+      } catch (e) {
+        log("Ruta fallida, intentando respaldo...");
       }
+    }
 
-      // 2. Extraer Valores (Busca la moneda y luego el primer bloque entre asteriscos)
-      const extract = (coin, text) => {
-          // Buscamos la moneda y capturamos todo lo que sigue hasta encontrar el patrón **número**
-          const regex = new RegExp(`${coin}[\\s\\S]*?\\*\\*([\\d,.]+)\\*\\*`, "i");
-          const match = text.match(regex);
-          return match ? match[1] : null;
-      };
-
-      const usdValue = extract("USD", rawText);
-      const eurValue = extract("EUR", rawText);
-
-      if (usdValue && eurValue) {
-        document.getElementById('usd').innerText = usdValue;
-        document.getElementById('eur').innerText = eurValue;
-        document.getElementById('status').innerText = "● CONECTADO";
-        log("Sincronización exitosa.");
-      } else {
-        throw new Error("No se hallaron los valores numéricos.");
-      }
-
-    } catch (e) {
-      log("Error: " + e.message);
-      document.getElementById('status').innerText = "ERROR DE CONEXIÓN";
+    if (!success) {
+      log("ERROR: No se pudo conectar con el BCV.");
+      document.getElementById('status').innerHTML = '<span class="dot" style="background:#e74c3c"></span> ERROR';
       document.getElementById('status').style.color = "#e74c3c";
     }
   }
 
-  // ESTO HACE QUE SE CARGUE AL ABRIR LA PÁGINA
-  window.onload = fetchRates;
+  // Ejecución automática al cargar la página
+  window.onload = () => {
+    fetchRates();
+  };
 </script>
 
 </body>
