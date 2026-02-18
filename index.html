@@ -5,17 +5,17 @@
   <title>BCV-consulting</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   
+  <link rel="icon" type="image/svg+xml" href='data:image/svg+xml;utf8,<svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="%23d32f2f"/><stop offset="100%" stop-color="%23ff9800"/></linearGradient></defs><circle cx="56" cy="56" r="36" fill="none" stroke="%23333" stroke-width="8"/><line x1="82" y1="82" x2="112" y2="112" stroke="%23333" stroke-width="8" stroke-linecap="round"/><text x="56" y="68" text-anchor="middle" font-size="40" font-weight="bold" fill="url(%23g)" font-family="Arial, Helvetica, sans-serif">$</text></svg>'>
+
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="BCV Monitor">
   <meta name="theme-color" content="#050505">
   
-  <link rel="icon" type="image/svg+xml" href='data:image/svg+xml;utf8,<svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="dollarGradient" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="%23d32f2f"/><stop offset="100%" stop-color="%23ff9800"/></linearGradient></defs><circle cx="56" cy="56" r="36" fill="none" stroke="%23333" stroke-width="8"/><line x1="82" y1="82" x2="112" y2="112" stroke="%23333" stroke-width="8" stroke-linecap="round"/><text x="56" y="68" text-anchor="middle" font-size="40" font-weight="bold" fill="url(%23dollarGradient)" font-family="Arial, Helvetica, sans-serif">$</text></svg>'>
-
-  <link rel="manifest" href='data:application/manifest+json,{"name":"BCV Consulting","short_name":"BCV","start_url":".","display":"standalone","background_color":"#050505","theme_color":"#050505","icons":[{"src":"data:image/svg+xml;utf8,<svg width=%22128%22 height=%22128%22 viewBox=%220 0 128 128%22 xmlns=%22http://www.w3.org/2000/svg%22><defs><linearGradient id=%22dollarGradient%22 x1=%220%25%22 y1=%220%25%22 x2=%22100%25%22 y2=%22100%25%22><stop offset=%220%25%22 stop-color=%22%23d32f2f%22/><stop offset=%22100%25%22 stop-color=%22%23ff9800%22/></linearGradient></defs><circle cx=%2256%22 cy=%2256%22 r=%2236%22 fill=%22none%22 stroke=%22%23333%22 stroke-width=%228%22/><line x1=%2282%22 y1=%2282%22 x2=%22112%22 y2=%22112%22 stroke=%22%23333%22 stroke-width=%228%22 stroke-linecap=%22round%22/><text x=%2256%22 y=%2268%22 text-anchor=%22middle%22 font-size=%2240%22 font-weight=%22bold%22 fill=%22url(%23dollarGradient)%22 font-family=%22Arial, Helvetica, sans-serif%22>$</text></svg>","sizes":"128x128","type":"image/svg+xml"}]}'>
+  <link rel="manifest" href='data:application/manifest+json,{"name":"BCV Consulting","short_name":"BCV","start_url":".","display":"standalone","background_color":"#050505","theme_color":"#050505","icons":[{"src":"data:image/svg+xml;utf8,<svg width=%22128%22 height=%22128%22 viewBox=%220 0 128 128%22 xmlns=%22http://www.w3.org/2000/svg%22><defs><linearGradient id=%22g%22 x1=%220%25%22 y1=%220%25%22 x2=%22100%25%22 y2=%22100%25%22><stop offset=%220%25%22 stop-color=%22%23d32f2f%22/><stop offset=%22100%25%22 stop-color=%22%23ff9800%22/></linearGradient></defs><circle cx=%2256%22 cy=%2256%22 r=%2236%22 fill=%22none%22 stroke=%22%23333%22 stroke-width=%228%22/><line x1=%2282%22 y1=%2282%22 x2=%22112%22 y2=%22112%22 stroke=%22%23333%22 stroke-width=%228%22 stroke-linecap=%22round%22/><text x=%2256%22 y=%2268%22 text-anchor=%22middle%22 font-size=%2240%22 font-weight=%22bold%22 fill=%22url(%23g)%22 font-family=%22Arial, Helvetica, sans-serif%22>$</text></svg>","sizes":"128x128","type":"image/svg+xml","purpose":"any maskable"}]}'>
 
   <style>
-    /* Estilos idénticos a los anteriores para mantener la interfaz */
-    body { background: #050505; color: #eee; font-family: -apple-system, sans-serif; display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
+    body { background: #050505; color: #eee; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
     .app { width: 90%; max-width: 340px; background: #111; padding: 25px; border-radius: 24px; border: 1px solid #222; text-align: center; box-shadow: 0 20px 50px rgba(0,0,0,0.8); }
     h1 { font-size: 20px; color: #fff; margin: 0 0 20px 0; letter-spacing: 1px; font-weight: 800; text-transform: uppercase; border-bottom: 1px solid #333; padding-bottom: 10px; }
     .card { background: #1a1a1a; padding: 18px; border-radius: 16px; margin-bottom: 15px; border-left: 5px solid #333; transition: 0.3s; }
@@ -23,15 +23,15 @@
     .eur { border-color: #f1c40f; }
     .label { font-size: 11px; color: #888; letter-spacing: 2px; font-weight: bold; }
     .value { font-size: 28px; font-weight: bold; margin: 5px 0; color: #fff; display: block; }
-    button { width: 100%; padding: 15px; border: none; border-radius: 12px; background: #fff; color: #000; font-weight: bold; cursor: pointer; transition: 0.2s; font-size: 14px; }
+    button { width: 100%; padding: 15px; border: none; border-radius: 12px; background: #fff; color: #000; font-weight: bold; cursor: pointer; transition: 0.2s; font-size: 14px; -webkit-tap-highlight-color: transparent; }
     button:active { transform: scale(0.96); opacity: 0.8; }
     .status { font-size: 11px; color: #555; margin-top: 15px; display: flex; align-items: center; justify-content: center; gap: 6px; }
     .dot { width: 8px; height: 8px; background: #333; border-radius: 50%; }
     .online { background: #2ecc71; box-shadow: 0 0 8px #2ecc71; }
     .loading { background: #f1c40f; box-shadow: 0 0 8px #f1c40f; }
     .console { margin-top: 20px; background: #000; border: 1px solid #222; border-radius: 10px; padding: 10px; font-family: 'Courier New', monospace; font-size: 10px; color: #0f0; text-align: left; height: 80px; overflow-y: auto; line-height: 1.4; }
-    footer { margin-top: 30px; font-size: 10px; color: #666; text-align: center; padding: 10px; }
-    footer a { color: #888; text-decoration: none; }
+    footer { margin-top: 30px; font-size: 10px; color: #666; text-align: center; padding: 10px; line-height: 1.6; }
+    footer a { color: #888; text-decoration: none; font-weight: bold; }
   </style>
 </head>
 <body>
@@ -60,7 +60,6 @@
 </footer>
 
 <script>
-  // ... (Aquí va la misma lógica de JavaScript optimizada que hicimos arriba)
   const logBox = document.getElementById('console');
   function log(msg) {
     const t = new Date().toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
@@ -74,6 +73,7 @@
     dot.className = "dot loading";
     fechaEl.innerText = "Consultando...";
     
+    // Priorizamos CorsProxy.io por velocidad comprobada
     const proxies = [
       { name: "CorsProxy.io", url: `https://corsproxy.io/?${encodeURIComponent(target)}` },
       { name: "AllOrigins (Raw)", url: `https://api.allorigins.win/raw?url=${encodeURIComponent(target)}&t=${Date.now()}` }
@@ -88,10 +88,12 @@
         const timeout = setTimeout(() => controller.abort(), 4000);
         const response = await fetch(proxy.url, { signal: controller.signal });
         clearTimeout(timeout);
+        
         if (!response.ok) continue;
         const html = await response.text();
         const usdMatch = html.match(/id="dolar"[\s\S]*?strong>\s*([\d,.]+)/i);
         const eurMatch = html.match(/id="euro"[\s\S]*?strong>\s*([\d,.]+)/i);
+
         if (usdMatch && eurMatch) {
           const u = usdMatch[1].trim();
           const e = eurMatch[1].trim();
@@ -103,10 +105,10 @@
           localStorage.setItem('v_e', e);
           localStorage.setItem('v_d', f);
           dot.className = "dot online";
-          log("¡Éxito!");
+          log("¡Sincronización exitosa!");
           success = true;
         }
-      } catch (err) { log(`Ruta fallida.`); }
+      } catch (err) { log(`Ruta fallida o lenta.`); }
     }
     if(!success) { dot.className = "dot"; fechaEl.innerText = "Error de red."; }
   }
@@ -117,6 +119,7 @@
       document.getElementById('usd').innerText = cU;
       document.getElementById('eur').innerText = localStorage.getItem('v_e');
       document.getElementById('fecha').innerText = localStorage.getItem('v_d');
+      log("Caché cargada.");
     }
     fetchRates();
   };
