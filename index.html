@@ -2,76 +2,18 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>BCV Rates</title>
+  <title>BCV Rates via Jina AI</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
   <style>
-    * {
-      box-sizing: border-box;
-    }
-
-    body {
-      margin: 0;
-      background: black;
-      color: white;
-      font-family: Arial, sans-serif;
-      min-height: 100vh;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      padding: 20px;
-    }
-
-    .app {
-      width: 100%;
-      max-width: 360px;
-      text-align: center;
-    }
-
-    .rate {
-      font-size: clamp(20px, 6vw, 26px);
-      margin: 12px 0;
-    }
-
-    button {
-      margin-top: 15px;
-      padding: 12px;
-      width: 100%;
-      font-size: 16px;
-      cursor: pointer;
-      border: none;
-      background: white;
-      color: black;
-      font-weight: bold;
-    }
-
-    button:active {
-      opacity: 0.8;
-    }
-
-    .update {
-      margin-top: 10px;
-      font-size: 12px;
-      color: #aaa;
-    }
-
-    .log {
-      margin-top: 15px;
-      background: #111;
-      border: 1px solid #333;
-      padding: 10px;
-      font-size: 12px;
-      height: 140px;
-      overflow-y: auto;
-      text-align: left;
-      color: #0f0;
-    }
-
-    @media (min-height: 700px) {
-      .log {
-        height: 180px;
-      }
-    }
+    /* Tu estilo se mantiene igual */
+    * { box-sizing: border-box; }
+    body { margin: 0; background: black; color: white; font-family: Arial, sans-serif; min-height: 100vh; display: flex; justify-content: center; align-items: center; padding: 20px; }
+    .app { width: 100%; max-width: 360px; text-align: center; }
+    .rate { font-size: clamp(20px, 6vw, 26px); margin: 12px 0; }
+    button { margin-top: 15px; padding: 12px; width: 100%; font-size: 16px; cursor: pointer; border: none; background: white; color: black; font-weight: bold; }
+    button:active { opacity: 0.8; }
+    .update { margin-top: 10px; font-size: 12px; color: #aaa; }
+    .log { margin-top: 15px; background: #111; border: 1px solid #333; padding: 10px; font-size: 12px; height: 140px; overflow-y: auto; text-align: left; color: #0f0; }
   </style>
 </head>
 <body>
@@ -80,10 +22,9 @@
   <div class="rate">USD: <span id="usd">-</span> Bs</div>
   <div class="rate">EUR: <span id="eur">-</span> Bs</div>
 
-  <button onclick="fetchRates()">Actualizar</button>
+  <button onclick="fetchRates()">Actualizar con Jina AI</button>
 
   <div class="update" id="update"></div>
-
   <div class="log" id="log"></div>
 </div>
 
@@ -108,48 +49,64 @@
     const usd = localStorage.getItem("usd");
     const eur = localStorage.getItem("eur");
     const date = localStorage.getItem("updatedAt");
-
     if (usd && eur && date) {
       usdEl.textContent = usd;
       eurEl.textContent = eur;
       updateEl.textContent = "Última actualización: " + date;
-      log("Datos cargados desde almacenamiento local");
-    } else {
-      log("No hay datos guardados");
+      log("Datos cargados de caché");
     }
   }
 
   async function fetchRates() {
-    log("Solicitando datos del BCV...");
-
+    log("Conectando a r.jina.ai...");
+    
     try {
-      const url = "https://api.allorigins.win/raw?url=https://www.bcv.org.ve/";
+      // Usamos el proxy de Jina directamente
+      const url = "https://r.jina.ai/https://www.bcv.org.ve/";
+      
       const res = await fetch(url);
-      const html = await res.text();
+      if (!res.ok) throw new Error("Error en respuesta de red");
+      
+      const text = await res.text();
 
-      const parser = new DOMParser();
-      const doc = parser.parseFromString(html, "text/html");
+      // Buscamos los valores usando Regex basándonos en la estructura de Jina
+      // Jina suele renderizar: "Euro ... valor" y "Dólar ... valor"
+      const usdMatch = text.match(/Dólar de la BCV\s*([\d,.]+)/i) || text.match(/USD\s*([\d,.]+)/i);
+      const eurMatch = text.match(/Euro\s*([\d,.]+)/i) || text.match(/EUR\s*([\d,.]+)/i);
 
-      const usd = doc.querySelector("#dolar .centrado strong")?.textContent?.trim();
-      const eur = doc.querySelector("#euro .centrado strong")?.textContent?.trim();
+      let usd = usdMatch ? usdMatch[1].trim() : null;
+      let eur = eurMatch ? eurMatch[1].trim() : null;
 
-      if (!usd || !eur) throw "No se encontraron valores";
+      // Si falla el regex específico, intentamos uno más genérico por posición
+      if (!usd) {
+          log("Reintentando extracción genérica...");
+          // El BCV suele poner los valores después de las etiquetas de moneda
+          const values = text.match(/\d+,\d+/g); 
+          if(values && values.length >= 5) {
+              eur = values[0];
+              usd = values[4]; // El dólar suele ser el último de la lista principal
+          }
+      }
+
+      if (!usd || !eur) {
+        log("Error: Formato de datos no reconocido");
+        return;
+      }
 
       const date = new Date().toLocaleString();
-
       usdEl.textContent = usd;
       eurEl.textContent = eur;
-      updateEl.textContent = "Última actualización: " + date;
+      updateEl.textContent = "Actualizado: " + date;
 
       saveData(usd, eur, date);
+      log(`¡Éxito! USD: ${usd}`);
 
-      log("Datos actualizados y guardados");
     } catch (e) {
-      log("Error obteniendo datos del BCV");
+      log("Error: " + e.message);
+      console.error(e);
     }
   }
 
-  // Cargar datos guardados al iniciar
   loadData();
 </script>
 
