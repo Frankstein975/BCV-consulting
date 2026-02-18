@@ -2,22 +2,23 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>BCV Monitor Oficial</title>
+  <title>BCV Flash</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
+    /* Estilos mantenidos y optimizados */
     body { background: #050505; color: #eee; font-family: 'Segoe UI', sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
-    .app { width: 90%; max-width: 340px; background: #111; padding: 25px; border-radius: 24px; box-shadow: 0 20px 50px rgba(0,0,0,0.7); border: 1px solid #222; text-align: center; }
-    .card { background: #1a1a1a; padding: 18px; border-radius: 16px; margin-bottom: 15px; border-left: 5px solid #333; transition: 0.3s; }
+    .app { width: 90%; max-width: 340px; background: #111; padding: 25px; border-radius: 24px; border: 1px solid #222; text-align: center; }
+    .card { background: #1a1a1a; padding: 18px; border-radius: 16px; margin-bottom: 15px; border-left: 5px solid #333; }
     .usd { border-color: #2ecc71; }
     .eur { border-color: #f1c40f; }
     .label { font-size: 11px; color: #888; letter-spacing: 2px; font-weight: bold; }
     .value { font-size: 28px; font-weight: bold; margin: 5px 0; color: #fff; display: block; }
-    button { width: 100%; padding: 14px; border: none; border-radius: 12px; background: #fff; color: #000; font-weight: bold; cursor: pointer; margin-top: 10px; transition: 0.2s; }
-    button:active { transform: scale(0.95); }
-    .status { font-size: 12px; color: #2ecc71; margin-top: 15px; font-weight: 500; display: flex; align-items: center; justify-content: center; gap: 5px; }
+    button { width: 100%; padding: 14px; border: none; border-radius: 12px; background: #fff; color: #000; font-weight: bold; cursor: pointer; margin-top: 10px; }
+    .status { font-size: 12px; color: #2ecc71; margin-top: 15px; display: flex; align-items: center; justify-content: center; gap: 5px; }
     .dot { width: 8px; height: 8px; background: #2ecc71; border-radius: 50%; display: inline-block; }
-    .fecha-valor { font-size: 11px; color: #666; margin-top: 5px; font-style: italic; }
-    .console { font-family: monospace; font-size: 9px; color: #444; background: #000; padding: 8px; border-radius: 8px; margin-top: 15px; height: 70px; overflow-y: auto; text-align: left; border: 1px solid #111; }
+    .fecha-valor { font-size: 11px; color: #666; margin-top: 5px; }
+    /* Escondemos la consola por defecto para limpiar la carga, pero la dejamos funcional */
+    .console { font-family: monospace; font-size: 9px; color: #444; background: #000; padding: 8px; border-radius: 8px; margin-top: 15px; height: 50px; overflow-y: auto; text-align: left; border: 1px solid #111; opacity: 0.6; }
   </style>
 </head>
 <body>
@@ -32,49 +33,53 @@
     <span id="usd" class="value">---</span>
   </div>
 
-  <button onclick="fetchRates()">ACTUALIZAR AHORA</button>
+  <button onclick="fetchRates()">ACTUALIZAR</button>
   
-  <div id="status" class="status"><span class="dot"></span> LISTO</div>
-  <div id="fecha" class="fecha-valor">Cargando...</div>
-  <div id="console" class="console">Iniciando sistema...</div>
+  <div id="status" class="status"><span id="dot" class="dot"></span> <span id="status-text">LISTO</span></div>
+  <div id="fecha" class="fecha-valor">Sincronizando...</div>
+  <div id="console" class="console">Listo para cargar.</div>
 </div>
 
 <script>
-  const logBox = document.getElementById('console');
-  
-  function log(msg) {
-    const t = new Date().toLocaleTimeString();
-    logBox.innerHTML = `> ${msg}<br>` + logBox.innerHTML;
+  // Carga inmediata de Cache (Esto mejora la percepción de velocidad)
+  function init() {
+    const cUsd = localStorage.getItem('bcv_usd');
+    const cEur = localStorage.getItem('bcv_eur');
+    const cDate = localStorage.getItem('bcv_date');
+    
+    if(cUsd) {
+      document.getElementById('usd').innerText = cUsd;
+      document.getElementById('eur').innerText = cEur;
+      document.getElementById('fecha').innerText = "Vigencia anterior: " + cDate;
+    }
+    fetchRates(); // Luego busca los nuevos
   }
 
-  // Cargar datos guardados previamente
-  function loadCache() {
-    const cachedUsd = localStorage.getItem('bcv_usd');
-    const cachedEur = localStorage.getItem('bcv_eur');
-    const cachedDate = localStorage.getItem('bcv_date');
-    if (cachedUsd) {
-      document.getElementById('usd').innerText = cachedUsd;
-      document.getElementById('eur').innerText = cachedEur;
-      document.getElementById('fecha').innerText = "Caché: " + cachedDate;
-      log("Datos cargados de memoria local.");
-    }
+  function log(msg) {
+    document.getElementById('console').innerHTML = `> ${msg}<br>` + document.getElementById('console').innerHTML;
   }
 
   async function fetchRates() {
-    log("Intentando conectar con BCV...");
-    document.getElementById('status').innerHTML = '<span class="dot" style="background:#f1c40f"></span> CONECTANDO...';
+    const statusText = document.getElementById('status-text');
+    const dot = document.getElementById('dot');
     
-    // Usamos el proxy de AllOrigins pero con el formato raw
-    const target = "https://r.jina.ai/https://www.bcv.org.ve/";
-    const url = `https://api.allorigins.win/raw?url=${encodeURIComponent(target)}&t=${Date.now()}`;
+    statusText.innerText = "ACTUALIZANDO...";
+    dot.style.background = "#f1c40f";
+
+    // Usamos el lector de Jina optimizado para velocidad
+    // Agregamos un timeout manual para no esperar eternamente si el proxy falla
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 seg max
 
     try {
-      const resp = await fetch(url);
-      if (!resp.ok) throw new Error("Error en servidor proxy");
-      
-      const rawText = await resp.text();
+      const target = "https://r.jina.ai/https://www.bcv.org.ve/";
+      const url = `https://api.allorigins.win/raw?url=${encodeURIComponent(target)}&t=${Date.now()}`;
 
-      // Extracción Regex mejorada (busca la moneda y el número entre asteriscos)
+      const resp = await fetch(url, { signal: controller.signal });
+      const rawText = await resp.text();
+      clearTimeout(timeoutId);
+
+      // Regex de alta velocidad
       const usdMatch = rawText.match(/USD[\s\S]*?\*\*([\d,.]+)\*\*/i);
       const eurMatch = rawText.match(/EUR[\s\S]*?\*\*([\d,.]+)\*\*/i);
       const fechaMatch = rawText.match(/Fecha Valor:\s*([^*#\n]+)/i);
@@ -82,45 +87,29 @@
       if (usdMatch && eurMatch) {
         const usd = usdMatch[1].trim();
         const eur = eurMatch[1].trim();
-        const fecha = fechaMatch ? fechaMatch[1].trim() : new Date().toLocaleDateString();
+        const fecha = fechaMatch ? fechaMatch[1].trim() : "Hoy";
 
         // Actualizar UI
         document.getElementById('usd').innerText = usd;
         document.getElementById('eur').innerText = eur;
         document.getElementById('fecha').innerText = "Vigencia: " + fecha;
-        
-        // Guardar en Cache
+
+        // Guardar para la próxima carga instantánea
         localStorage.setItem('bcv_usd', usd);
         localStorage.setItem('bcv_eur', eur);
         localStorage.setItem('bcv_date', fecha);
 
-        document.getElementById('status').innerHTML = '<span class="dot"></span> EN LÍNEA';
-        document.getElementById('status').style.color = "#2ecc71";
-        log("¡Éxito! Datos actualizados.");
-      } else {
-        throw new Error("Formato de datos no reconocido");
+        statusText.innerText = "EN LÍNEA";
+        dot.style.background = "#2ecc71";
       }
-
     } catch (e) {
-      log("Fallo de red. " + e.message);
-      document.getElementById('status').innerHTML = '<span class="dot" style="background:#e74c3c"></span> ERROR';
-      document.getElementById('status').style.color = "#e74c3c";
-      
-      // Si falla, reintentamos con otro proxy tras 2 segundos solo una vez
-      if(!window.retried) {
-          window.retried = true;
-          log("Reintentando con ruta alternativa...");
-          setTimeout(fetchRates, 2000);
-      }
+      log("Error de conexión. Usando datos guardados.");
+      statusText.innerText = "SIN CONEXIÓN";
+      dot.style.background = "#e74c3c";
     }
   }
 
-  // Iniciar automáticamente
-  window.onload = () => {
-    loadCache();
-    fetchRates();
-  };
+  window.onload = init;
 </script>
-
 </body>
 </html>
