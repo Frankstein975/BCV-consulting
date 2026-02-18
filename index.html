@@ -2,79 +2,81 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>BCV Rates - Fixed</title>
+  <title>BCV Rates - Exact Match</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
-    body { background: #000; color: #fff; font-family: sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
-    .app { width: 100%; max-width: 350px; text-align: center; border: 1px solid #333; padding: 20px; border-radius: 10px; }
-    .rate { font-size: 24px; margin: 15px 0; font-weight: bold; }
-    .rate span { color: #0f0; }
-    button { width: 100%; padding: 12px; cursor: pointer; background: #fff; border: none; font-weight: bold; margin-bottom: 10px; }
-    .update { font-size: 11px; color: #888; margin-top: 10px; }
-    .log { font-size: 10px; color: #0f0; background: #111; padding: 10px; height: 80px; overflow-y: auto; text-align: left; margin-top: 10px; border: 1px solid #222; }
+    body { background: #000; color: #fff; font-family: 'Segoe UI', sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
+    .app { width: 100%; max-width: 350px; text-align: center; border: 1px solid #333; padding: 25px; border-radius: 15px; background: #0a0a0a; }
+    .rate-card { background: #111; padding: 15px; border-radius: 8px; margin: 10px 0; border-left: 4px solid #0f0; }
+    .label { font-size: 14px; color: #888; text-transform: uppercase; }
+    .value { font-size: 28px; font-weight: bold; color: #fff; display: block; }
+    button { width: 100%; padding: 15px; cursor: pointer; background: #fff; border: none; font-weight: bold; border-radius: 8px; transition: 0.3s; }
+    button:hover { background: #ccc; }
+    .update { font-size: 11px; color: #666; margin-top: 15px; }
+    .log { font-size: 10px; color: #0f0; background: #000; padding: 10px; height: 100px; overflow-y: auto; text-align: left; margin-top: 15px; border: 1px solid #222; font-family: monospace; }
   </style>
 </head>
 <body>
 
 <div class="app">
-  <div class="rate">USD: <span id="usd">0,00</span> Bs</div>
-  <div class="rate">EUR: <span id="eur">0,00</span> Bs</div>
+  <div class="rate-card">
+    <span class="label">Dólar (USD)</span>
+    <span id="usd" class="value">0,00</span>
+  </div>
+  <div class="rate-card" style="border-left-color: #007bff;">
+    <span class="label">Euro (EUR)</span>
+    <span id="eur" class="value">0,00</span>
+  </div>
 
-  <button onclick="fetchRates()">Actualizar BCV</button>
+  <button onclick="fetchRates()">ACTUALIZAR DATOS</button>
 
-  <div id="update" class="update">Presiona actualizar</div>
-  <div id="log" class="log">Esperando orden...</div>
+  <div id="update" class="update">Esperando actualización...</div>
+  <div id="log" class="log">Consola lista...</div>
 </div>
 
 <script>
   const logEl = document.getElementById('log');
   
   function log(msg) {
-    logEl.innerHTML = `> ${msg}<br>${logEl.innerHTML}`;
+    const t = new Date().toLocaleTimeString();
+    logEl.innerHTML = `[${t}] ${msg}<br>${logEl.innerHTML}`;
   }
 
   async function fetchRates() {
-    log("Iniciando consulta...");
+    log("Conectando con BCV via Jina...");
     
-    // Usamos allorigins para evitar el error de CORS
     const targetUrl = "https://r.jina.ai/https://www.bcv.org.ve/";
     const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`;
 
     try {
       const response = await fetch(proxyUrl);
-      if (!response.ok) throw new Error("Error en el proxy");
-      
       const data = await response.json();
-      const content = data.contents; // Aquí está el texto de Jina
+      const text = data.contents;
 
-      // Regex específicos para el formato de Jina del BCV
-      // Buscamos "USD" o "Dólar" seguido de un número con coma
-      const usdMatch = content.match(/(?:USD|Dólar|Dolar)[^\d]+(\d+,\d+)/i);
-      const eurMatch = content.match(/(?:EUR|Euro)[^\d]+(\d+,\d+)/i);
+      /* EXPLICACIÓN DEL REGEX:
+         (?:\*\*USD\*\*|\*\*DÓLAR\*\*) -> Busca la etiqueta USD o DÓLAR entre asteriscos.
+         [\s\S]*? -> Salta cualquier caracter (espacios, saltos de línea) de forma no ambiciosa.
+         \*\*(\d+,\d+)\*\* -> Captura el primer número con coma que esté entre dobles asteriscos.
+      */
+      const usdRegex = /(?:\*\*USD\*\*|\*\*DÓLAR\*\*)[\s\S]*?\*\*(\d+,\d+)\*\*/i;
+      const eurRegex = /(?:\*\*EUR\*\*|\*\*EURO\*\*)[\s\S]*?\*\*(\d+,\d+)\*\*/i;
+
+      const usdMatch = text.match(usdRegex);
+      const eurMatch = text.match(eurRegex);
 
       if (usdMatch && eurMatch) {
-        const usd = usdMatch[1];
-        const eur = eurMatch[1];
-
-        document.getElementById('usd').textContent = usd;
-        document.getElementById('eur').textContent = eur;
-        document.getElementById('update').textContent = "Última actualización: " + new Date().toLocaleString();
-        
-        log(`Éxito: USD ${usd}`);
+        document.getElementById('usd').textContent = usdMatch[1];
+        document.getElementById('eur').textContent = eurMatch[1];
+        document.getElementById('update').textContent = "Sincronizado: " + new Date().toLocaleString();
+        log("¡Valores extraídos correctamente!");
       } else {
-        log("No se detectaron números. Reintentando método alterno...");
-        // Intento 2: Buscar cualquier número con coma que parezca tasa
-        const genericMatches = content.match(/\d+,\d{2,4}/g);
-        if (genericMatches && genericMatches.length >= 2) {
-            document.getElementById('eur').textContent = genericMatches[0];
-            document.getElementById('usd').textContent = genericMatches[genericMatches.length - 1];
-            log("Extraído por posición genérica.");
-        } else {
-            throw new Error("Formato de página no reconocido");
-        }
+        log("Error: No se encontró el formato **valor** después de la moneda.");
+        // Debug por si Jina cambia el formato a negritas simples o sin ellas
+        console.log("Contenido recibido:", text);
       }
+
     } catch (error) {
-      log("ERROR: " + error.message);
+      log("ERROR DE CONEXIÓN");
       console.error(error);
     }
   }
