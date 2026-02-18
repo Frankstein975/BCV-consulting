@@ -7,13 +7,13 @@
   <style>
     body { background: #050505; color: #eee; font-family: 'Segoe UI', sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
     .app { width: 90%; max-width: 340px; background: #111; padding: 25px; border-radius: 24px; box-shadow: 0 20px 50px rgba(0,0,0,0.7); border: 1px solid #222; text-align: center; }
-    .card { background: #1a1a1a; padding: 18px; border-radius: 16px; margin-bottom: 15px; border-left: 5px solid #333; transition: 0.3s; position: relative; overflow: hidden; }
+    .card { background: #1a1a1a; padding: 18px; border-radius: 16px; margin-bottom: 15px; border-left: 5px solid #333; transition: 0.3s; }
     .usd { border-color: #2ecc71; }
     .eur { border-color: #f1c40f; }
     .label { font-size: 11px; color: #888; letter-spacing: 2px; font-weight: bold; }
     .value { font-size: 28px; font-weight: bold; margin: 5px 0; color: #fff; display: block; }
     button { width: 100%; padding: 14px; border: none; border-radius: 12px; background: #fff; color: #000; font-weight: bold; cursor: pointer; margin-top: 10px; transition: 0.2s; }
-    button:hover { background: #ddd; }
+    button:active { transform: scale(0.95); }
     .status { font-size: 12px; color: #2ecc71; margin-top: 15px; font-weight: 500; display: flex; align-items: center; justify-content: center; gap: 5px; }
     .dot { width: 8px; height: 8px; background: #2ecc71; border-radius: 50%; display: inline-block; }
     .fecha-valor { font-size: 11px; color: #666; margin-top: 5px; font-style: italic; }
@@ -35,7 +35,7 @@
   <button onclick="fetchRates()">ACTUALIZAR AHORA</button>
   
   <div id="status" class="status"><span class="dot"></span> LISTO</div>
-  <div id="fecha" class="fecha-valor">Sincronizando fecha...</div>
+  <div id="fecha" class="fecha-valor">Cargando...</div>
   <div id="console" class="console">Iniciando sistema...</div>
 </div>
 
@@ -47,70 +47,77 @@
     logBox.innerHTML = `> ${msg}<br>` + logBox.innerHTML;
   }
 
-  async function fetchRates() {
-    log("Conectando con r.jina.ai...");
-    document.getElementById('status').innerHTML = '<span class="dot" style="background:#f1c40f"></span> CARGANDO...';
-    
-    const targetUrl = "https://r.jina.ai/https://www.bcv.org.ve/";
-    
-    // Intentamos con dos proxys por si uno falla (CORS fallback)
-    const proxies = [
-      `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}&cache=${Date.now()}`,
-      `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`
-    ];
-
-    let success = false;
-
-    for (let url of proxies) {
-      if (success) break;
-      
-      try {
-        log(`Probando ruta de acceso...`);
-        const resp = await fetch(url);
-        let rawText = "";
-
-        if (url.includes("allorigins")) {
-          const data = await resp.json();
-          rawText = data.contents;
-        } else {
-          rawText = await resp.text();
-        }
-
-        if (!rawText || rawText.length < 100) continue;
-
-        // --- EXTRACCIÓN CON REGEX MEJORADO ---
-        // Busca la moneda y captura el primer número entre asteriscos que aparezca después
-        const usdMatch = rawText.match(/USD[\s\S]*?\*\*([\d,.]+)\*\*/i);
-        const eurMatch = rawText.match(/EUR[\s\S]*?\*\*([\d,.]+)\*\*/i);
-        const fechaMatch = rawText.match(/Fecha Valor:\s*([^*#\n]+)/i);
-
-        if (usdMatch && eurMatch) {
-          document.getElementById('usd').innerText = usdMatch[1].trim();
-          document.getElementById('eur').innerText = eurMatch[1].trim();
-          
-          if (fechaMatch) {
-            document.getElementById('fecha').innerText = "Vigencia: " + fechaMatch[1].trim();
-          }
-
-          document.getElementById('status').innerHTML = '<span class="dot"></span> EN LÍNEA';
-          document.getElementById('status').style.color = "#2ecc71";
-          log("Datos actualizados con éxito.");
-          success = true;
-        }
-      } catch (e) {
-        log("Ruta fallida, intentando respaldo...");
-      }
-    }
-
-    if (!success) {
-      log("ERROR: No se pudo conectar con el BCV.");
-      document.getElementById('status').innerHTML = '<span class="dot" style="background:#e74c3c"></span> ERROR';
-      document.getElementById('status').style.color = "#e74c3c";
+  // Cargar datos guardados previamente
+  function loadCache() {
+    const cachedUsd = localStorage.getItem('bcv_usd');
+    const cachedEur = localStorage.getItem('bcv_eur');
+    const cachedDate = localStorage.getItem('bcv_date');
+    if (cachedUsd) {
+      document.getElementById('usd').innerText = cachedUsd;
+      document.getElementById('eur').innerText = cachedEur;
+      document.getElementById('fecha').innerText = "Caché: " + cachedDate;
+      log("Datos cargados de memoria local.");
     }
   }
 
-  // Ejecución automática al cargar la página
+  async function fetchRates() {
+    log("Intentando conectar con BCV...");
+    document.getElementById('status').innerHTML = '<span class="dot" style="background:#f1c40f"></span> CONECTANDO...';
+    
+    // Usamos el proxy de AllOrigins pero con el formato raw
+    const target = "https://r.jina.ai/https://www.bcv.org.ve/";
+    const url = `https://api.allorigins.win/raw?url=${encodeURIComponent(target)}&t=${Date.now()}`;
+
+    try {
+      const resp = await fetch(url);
+      if (!resp.ok) throw new Error("Error en servidor proxy");
+      
+      const rawText = await resp.text();
+
+      // Extracción Regex mejorada (busca la moneda y el número entre asteriscos)
+      const usdMatch = rawText.match(/USD[\s\S]*?\*\*([\d,.]+)\*\*/i);
+      const eurMatch = rawText.match(/EUR[\s\S]*?\*\*([\d,.]+)\*\*/i);
+      const fechaMatch = rawText.match(/Fecha Valor:\s*([^*#\n]+)/i);
+
+      if (usdMatch && eurMatch) {
+        const usd = usdMatch[1].trim();
+        const eur = eurMatch[1].trim();
+        const fecha = fechaMatch ? fechaMatch[1].trim() : new Date().toLocaleDateString();
+
+        // Actualizar UI
+        document.getElementById('usd').innerText = usd;
+        document.getElementById('eur').innerText = eur;
+        document.getElementById('fecha').innerText = "Vigencia: " + fecha;
+        
+        // Guardar en Cache
+        localStorage.setItem('bcv_usd', usd);
+        localStorage.setItem('bcv_eur', eur);
+        localStorage.setItem('bcv_date', fecha);
+
+        document.getElementById('status').innerHTML = '<span class="dot"></span> EN LÍNEA';
+        document.getElementById('status').style.color = "#2ecc71";
+        log("¡Éxito! Datos actualizados.");
+      } else {
+        throw new Error("Formato de datos no reconocido");
+      }
+
+    } catch (e) {
+      log("Fallo de red. " + e.message);
+      document.getElementById('status').innerHTML = '<span class="dot" style="background:#e74c3c"></span> ERROR';
+      document.getElementById('status').style.color = "#e74c3c";
+      
+      // Si falla, reintentamos con otro proxy tras 2 segundos solo una vez
+      if(!window.retried) {
+          window.retried = true;
+          log("Reintentando con ruta alternativa...");
+          setTimeout(fetchRates, 2000);
+      }
+    }
+  }
+
+  // Iniciar automáticamente
   window.onload = () => {
+    loadCache();
     fetchRates();
   };
 </script>
