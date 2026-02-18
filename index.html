@@ -2,21 +2,20 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>BCV Express</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>BCV Monitor Lite</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
   <style>
-    body { background: #000; color: #fff; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; overflow: hidden; }
-    .app { width: 100%; max-width: 320px; padding: 20px; text-align: center; }
-    .card { background: #111; padding: 20px; border-radius: 20px; margin-bottom: 12px; border: 1px solid #222; position: relative; }
-    .usd { border-bottom: 4px solid #2ecc71; }
-    .eur { border-bottom: 4px solid #f1c40f; }
-    .label { font-size: 10px; color: #666; letter-spacing: 1.5px; font-weight: 700; margin-bottom: 8px; display: block; }
-    .value { font-size: 30px; font-weight: 800; color: #fff; }
-    button { width: 100%; padding: 16px; border: none; border-radius: 15px; background: #fff; color: #000; font-weight: 700; font-size: 14px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
-    button:active { transform: scale(0.97); background: #eee; }
-    .status-bar { margin-top: 15px; font-size: 11px; color: #444; }
-    #fecha { color: #888; font-weight: 500; }
-    .dot { height: 6px; width: 6px; background: #444; border-radius: 50%; display: inline-block; margin-right: 5px; }
+    body { background: #050505; color: #eee; font-family: -apple-system, sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
+    .app { width: 90%; max-width: 320px; background: #111; padding: 25px; border-radius: 24px; border: 1px solid #222; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+    .card { background: #1a1a1a; padding: 18px; border-radius: 16px; margin-bottom: 15px; border-left: 5px solid #333; }
+    .usd { border-color: #2ecc71; }
+    .eur { border-color: #f1c40f; }
+    .label { font-size: 11px; color: #888; letter-spacing: 2px; font-weight: bold; }
+    .value { font-size: 26px; font-weight: bold; margin: 5px 0; color: #fff; display: block; }
+    button { width: 100%; padding: 15px; border: none; border-radius: 12px; background: #fff; color: #000; font-weight: bold; cursor: pointer; transition: 0.2s; -webkit-tap-highlight-color: transparent; }
+    button:active { transform: scale(0.96); opacity: 0.8; }
+    .status { font-size: 12px; color: #444; margin-top: 15px; display: flex; align-items: center; justify-content: center; gap: 5px; }
+    .dot { width: 7px; height: 7px; background: #444; border-radius: 50%; }
     .online { background: #2ecc71; box-shadow: 0 0 5px #2ecc71; }
   </style>
 </head>
@@ -25,30 +24,32 @@
 <div class="app">
   <div class="card eur">
     <span class="label">EURO</span>
-    <span id="eur" class="value">---</span>
+    <span id="eur" class="value">0,00</span>
   </div>
   <div class="card usd">
-    <span class="label">DÓLAR</span>
-    <span id="usd" class="value">---</span>
+    <span class="label">DÓLAR USD</span>
+    <span id="usd" class="value">0,00</span>
   </div>
 
   <button onclick="fetchRates()">ACTUALIZAR</button>
   
-  <div class="status-bar">
-    <span id="dot" class="dot"></span> <span id="fecha">Sincronizando...</span>
+  <div class="status">
+    <div id="dot" class="dot"></div>
+    <span id="fecha">Sincronizando...</span>
   </div>
 </div>
 
 <script>
-  // 1. Carga instantánea desde cache
+  // Carga inmediata desde almacenamiento local
   function init() {
-    const cUsd = localStorage.getItem('b_u');
-    const cEur = localStorage.getItem('b_e');
-    const cDat = localStorage.getItem('b_d');
-    if(cUsd) {
-      document.getElementById('usd').innerText = cUsd;
-      document.getElementById('eur').innerText = cEur;
-      document.getElementById('fecha').innerText = cDat;
+    const cachedUsd = localStorage.getItem('v_u');
+    const cachedEur = localStorage.getItem('v_e');
+    const cachedDate = localStorage.getItem('v_d');
+    
+    if(cachedUsd) {
+      document.getElementById('usd').innerText = cachedUsd;
+      document.getElementById('eur').innerText = cachedEur;
+      document.getElementById('fecha').innerText = cachedDate;
     }
     fetchRates();
   }
@@ -56,49 +57,55 @@
   async function fetchRates() {
     const dot = document.getElementById('dot');
     const fechaEl = document.getElementById('fecha');
-    dot.className = "dot"; // Reset a gris
     
-    // Usamos un proxy que suele ser más rápido para peticiones RAW
+    dot.classList.remove('online');
+    fechaEl.innerText = "Conectando...";
+
+    // Usamos Corsproxy.io que suele ser más rápido y menos congestionado
     const target = "https://www.bcv.org.ve/";
-    const url = `https://api.allorigins.win/raw?url=${encodeURIComponent(target)}&t=${Date.now()}`;
+    const url = `https://corsproxy.io/?${encodeURIComponent(target)}`;
 
     try {
-      const resp = await fetch(url);
-      if (!resp.ok) throw 'error';
-      const html = await resp.text();
-
-      // Buscamos directamente en el HTML del BCV (sin pasar por Jina)
-      // El BCV usa estructuras fijas: id="dolar" ... strong
-      const parser = new DOMParser();
-      const doc = parser.parseFromString(html, "text/html");
-
-      const usd = doc.querySelector("#dolar strong")?.textContent?.trim() || 
-                  html.match(/id="dolar"[\s\S]*?strong>([\d,.]+)/)?.[1];
+      const response = await fetch(url);
+      if (!response.ok) throw new Error();
       
-      const eur = doc.querySelector("#euro strong")?.textContent?.trim() || 
-                  html.match(/id="euro"[\s\S]*?strong>([\d,.]+)/)?.[1];
-      
-      const fecha = doc.querySelector(".date-display-single")?.textContent?.trim() || 
-                    doc.querySelector(".dincomun.centrado span")?.textContent?.trim() || "Actualizado";
+      const html = await response.text();
+
+      // Extracción usando el ID y la etiqueta strong que me facilitaste
+      // El regex busca id="moneda" y luego el contenido dentro de <strong>
+      const extract = (id) => {
+        const regex = new RegExp(`id="${id}"[\\s\\S]*?strong>\\s*([\\d,.]+)`, "i");
+        const match = html.match(regex);
+        return match ? match[1].trim() : null;
+      };
+
+      const usd = extract("dolar");
+      const eur = extract("euro");
 
       if (usd && eur) {
         document.getElementById('usd').innerText = usd;
         document.getElementById('eur').innerText = eur;
-        fechaEl.innerText = fecha;
         
-        localStorage.setItem('b_u', usd);
-        localStorage.setItem('b_e', eur);
-        localStorage.setItem('b_d', fecha);
+        const ahora = new Date().toLocaleString('es-VE', { hour12: true });
+        fechaEl.innerText = "Cotejado: " + ahora;
 
-        dot.className = "dot online";
+        // Guardar en cache
+        localStorage.setItem('v_u', usd);
+        localStorage.setItem('v_e', eur);
+        localStorage.setItem('v_d', "Caché: " + ahora);
+
+        dot.classList.add('online');
+      } else {
+        fechaEl.innerText = "Error: Estructura BCV cambió";
       }
     } catch (e) {
-      console.error(e);
-      fechaEl.innerText = "Error de conexión";
+      fechaEl.innerText = "Error de red/proxy";
+      console.error("Fallo fetch:", e);
     }
   }
 
   window.onload = init;
 </script>
+
 </body>
 </html>
