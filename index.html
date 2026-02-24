@@ -12,24 +12,48 @@
   <meta name="apple-mobile-web-app-title" content="BCV Monitor">
   <meta name="theme-color" content="#050505">
   
-  <link rel="manifest" href='data:application/manifest+json,{"name":"BCV Consulting","short_name":"BCV","start_url":".","display":"standalone","background_color":"#050505","theme_color":"#050505","icons":[{"src":"data:image/svg+xml;utf8,<svg width=%22128%22 height=%22128%22 viewBox=%220 0 128 128%22 xmlns=%22http://www.w3.org/2000/svg%22><defs><linearGradient id=%22g%22 x1=%220%25%22 y1=%220%25%22 x2=%22100%25%22 y2=%22100%25%22><stop offset=%220%25%22 stop-color=%22%23d32f2f%22/><stop offset=%22100%25%22 stop-color=%22%23ff9800%22/></linearGradient></defs><circle cx=%2256%22 cy=%2256%22 r=%2236%22 fill=%22none%22 stroke=%22%23333%22 stroke-width=%228%22/><line x1=%2282%22 y1=%2282%22 x2=%22112%22 y2=%22112%22 stroke=%22%23333%22 stroke-width=%228%22 stroke-linecap=%22round%22/><text x=%2256%22 y=%2268%22 text-anchor=%22middle%22 font-size=%2240%22 font-weight=%22bold%22 fill=%22url(%23g)%22 font-family=%22Arial, Helvetica, sans-serif%22>$</text></svg>","sizes":"128x128","type":"image/svg+xml","purpose":"any maskable"}]}'>
-
   <style>
-    body { background: #050505; color: #eee; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
-    .app { width: 90%; max-width: 340px; background: #111; padding: 25px; border-radius: 24px; border: 1px solid #222; text-align: center; box-shadow: 0 20px 50px rgba(0,0,0,0.8); }
+    body { background: #050505; color: #eee; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 100vh; margin: 0; overflow-x: hidden; }
+    .app { width: 90%; max-width: 340px; background: #111; padding: 25px; border-radius: 24px; border: 1px solid #222; text-align: center; box-shadow: 0 20px 50px rgba(0,0,0,0.8); position: relative; z-index: 1; }
     h1 { font-size: 20px; color: #fff; margin: 0 0 20px 0; letter-spacing: 1px; font-weight: 800; text-transform: uppercase; border-bottom: 1px solid #333; padding-bottom: 10px; }
     .card { background: #1a1a1a; padding: 18px; border-radius: 16px; margin-bottom: 15px; border-left: 5px solid #333; transition: 0.3s; }
     .usd { border-color: #2ecc71; }
     .eur { border-color: #f1c40f; }
     .label { font-size: 11px; color: #888; letter-spacing: 2px; font-weight: bold; }
     .value { font-size: 28px; font-weight: bold; margin: 5px 0; color: #fff; display: block; }
-    button { width: 100%; padding: 15px; border: none; border-radius: 12px; background: #fff; color: #000; font-weight: bold; cursor: pointer; transition: 0.2s; font-size: 14px; -webkit-tap-highlight-color: transparent; }
+    
+    button { width: 100%; padding: 15px; border: none; border-radius: 12px; background: #fff; color: #000; font-weight: bold; cursor: pointer; transition: 0.2s; font-size: 14px; -webkit-tap-highlight-color: transparent; margin-bottom: 10px; }
+    button.secondary { background: #222; color: #fff; border: 1px solid #333; }
     button:active { transform: scale(0.96); opacity: 0.8; }
+
     .status { font-size: 11px; color: #555; margin-top: 15px; display: flex; align-items: center; justify-content: center; gap: 6px; }
     .dot { width: 8px; height: 8px; background: #333; border-radius: 50%; }
     .online { background: #2ecc71; box-shadow: 0 0 8px #2ecc71; }
     .loading { background: #f1c40f; box-shadow: 0 0 8px #f1c40f; }
-    .console { margin-top: 20px; background: #000; border: 1px solid #222; border-radius: 10px; padding: 10px; font-family: 'Courier New', monospace; font-size: 10px; color: #0f0; text-align: left; height: 80px; overflow-y: auto; line-height: 1.4; }
+    .console { margin-top: 20px; background: #000; border: 1px solid #222; border-radius: 10px; padding: 10px; font-family: 'Courier New', monospace; font-size: 10px; color: #0f0; text-align: left; height: 60px; overflow-y: auto; line-height: 1.4; }
+    
+    /* --- CALCULADORA MODAL --- */
+    #calc-modal {
+      position: fixed; bottom: -100%; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.9); display: flex; align-items: flex-end;
+      transition: 0.4s cubic-bezier(0.4, 0, 0.2, 1); z-index: 100;
+    }
+    #calc-modal.active { bottom: 0; }
+    .calc-content { 
+      width: 100%; background: #1a1a1a; border-radius: 30px 30px 0 0; 
+      padding: 30px 20px; box-sizing: border-box; border-top: 1px solid #333;
+    }
+    .calc-grid { display: flex; flex-direction: column; gap: 15px; }
+    input, select { 
+      width: 100%; padding: 15px; background: #111; border: 1px solid #333; 
+      border-radius: 12px; color: #fff; font-size: 16px; box-sizing: border-box; outline: none;
+    }
+    .res-box { 
+      background: #000; padding: 20px; border-radius: 12px; text-align: center;
+      border: 1px dashed #444; margin: 10px 0;
+    }
+    .res-val { font-size: 24px; font-weight: bold; color: #2ecc71; }
+
     footer { margin-top: 30px; font-size: 10px; color: #666; text-align: center; padding: 10px; line-height: 1.6; }
     footer a { color: #888; text-decoration: none; font-weight: bold; }
   </style>
@@ -46,12 +70,40 @@
     <span class="label">DÓLAR (USD)</span>
     <span id="usd" class="value">0,00</span>
   </div>
+  
   <button onclick="fetchRates()">ACTUALIZAR DATOS</button>
+  <button class="secondary" onclick="toggleCalc(true)">CALCULADORA DE COSTOS</button>
+
   <div class="status">
     <div id="dot" class="dot"></div>
     <span id="fecha">Sincronizando...</span>
   </div>
   <div id="console" class="console">Esperando actualización...</div>
+</div>
+
+<div id="calc-modal">
+  <div class="calc-content">
+    <div style="width: 40px; height: 5px; background: #333; border-radius: 10px; margin: 0 auto 20px;"></div>
+    <h2 style="margin-top: 0; font-size: 18px; text-align: center;">Calculadora de Conversión</h2>
+    
+    <div class="calc-grid">
+      <select id="calc-type" onchange="calculate()">
+        <option value="usd_ves">USD a Bolívares</option>
+        <option value="ves_usd">Bolívares a USD</option>
+        <option value="eur_ves">EUR a Bolívares</option>
+        <option value="ves_eur">Bolívares a EUR</option>
+      </select>
+
+      <input type="number" id="calc-input" placeholder="Ingrese monto..." oninput="calculate()">
+      
+      <div class="res-box">
+        <span class="label">RESULTADO ESTIMADO</span><br>
+        <span id="calc-result" class="res-val">0,00</span>
+      </div>
+
+      <button onclick="toggleCalc(false)">CERRAR</button>
+    </div>
+  </div>
 </div>
 
 <footer>
@@ -66,6 +118,26 @@
     logBox.innerHTML = `[${t}] ${msg}<br>` + logBox.innerHTML;
   }
 
+  function toggleCalc(show) {
+    document.getElementById('calc-modal').classList.toggle('active', show);
+    if(show) document.getElementById('calc-input').focus();
+  }
+
+  function calculate() {
+    const type = document.getElementById('calc-type').value;
+    const input = parseFloat(document.getElementById('calc-input').value) || 0;
+    const usd = parseFloat(document.getElementById('usd').innerText.replace(',', '.'));
+    const eur = parseFloat(document.getElementById('eur').innerText.replace(',', '.'));
+    let res = 0;
+
+    if(type === 'usd_ves') res = input * usd;
+    if(type === 'ves_usd') res = input / usd;
+    if(type === 'eur_ves') res = input * eur;
+    if(type === 'ves_eur') res = input / eur;
+
+    document.getElementById('calc-result').innerText = res.toLocaleString('es-VE', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+  }
+
   async function fetchRates() {
     const dot = document.getElementById('dot');
     const fechaEl = document.getElementById('fecha');
@@ -73,7 +145,6 @@
     dot.className = "dot loading";
     fechaEl.innerText = "Consultando...";
     
-    // Priorizamos CorsProxy.io por velocidad comprobada
     const proxies = [
       { name: "CorsProxy.io", url: `https://corsproxy.io/?${encodeURIComponent(target)}` },
       { name: "AllOrigins (Raw)", url: `https://api.allorigins.win/raw?url=${encodeURIComponent(target)}&t=${Date.now()}` }
@@ -85,7 +156,7 @@
       try {
         log(`Probando: ${proxy.name}...`);
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 4000);
+        const timeout = setTimeout(() => controller.abort(), 5000);
         const response = await fetch(proxy.url, { signal: controller.signal });
         clearTimeout(timeout);
         
@@ -107,6 +178,7 @@
           dot.className = "dot online";
           log("¡Sincronización exitosa!");
           success = true;
+          calculate(); // Recalcular si la calculadora está abierta
         }
       } catch (err) { log(`Ruta fallida o lenta.`); }
     }
