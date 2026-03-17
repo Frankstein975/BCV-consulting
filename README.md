@@ -1,55 +1,63 @@
-📊 BCV Consulting - Divisas en Tiempo Real
-Una herramienta ligera, rápida y minimalista diseñada para consultar las tasas oficiales del Banco Central de Venezuela (BCV). Mi motivación principal al crear este proyecto fue eliminar la fricción al buscar los precios oficiales del Euro y el Dólar, proporcionando una calculadora integrada que permita realizar conversiones precisas al instante.
+# 📊 BCV Consulting - Divisas en Tiempo Real
 
-Explorar Aplicación →
+![Status](https://img.shields.io/badge/Status-Online-2ecc71?style=for-the-badge)
+![Platform](https://img.shields.io/badge/Platform-Web%20%2F%20Mobile-111?style=for-the-badge)
 
-✨ Características Principales
-⚡ Sincronización Real: Obtención directa de los precios oficiales del BCV (USD y EUR).
+Una herramienta **ligera, rápida y minimalista** diseñada para consultar las tasas oficiales del **Banco Central de Venezuela (BCV)**. Mi motivación principal al crear este proyecto fue eliminar la fricción al buscar los precios oficiales del Euro y el Dólar, proporcionando una calculadora integrada que permita realizar conversiones precisas al instante.
 
-🧮 Calculadora Inteligente: Conversión bidireccional (Bolívares a Divisa / Divisa a Bolívares) con soporte para decimales venezolanos.
+---
 
-🌑 Estética Carbon: Interfaz oscura (OLED Friendly) diseñada para reducir la fatiga visual y ahorrar batería.
+## ✨ Características Principales
 
-📱 Experiencia App-Like: Animaciones fluidas, menús desplegables y controles optimizados para uso con una sola mano.
+* **⚡ Sincronización Real:** Obtención de los precios oficiales del BCV (USD y EUR).
+* **🧮 Calculadora Inteligente:** Conversión bidireccional (Bs ↔ USD/EUR) con soporte para formato decimal venezolano.
+* **🌑 Estética Carbon:** Interfaz oscura (OLED Friendly) diseñada para reducir la fatiga visual.
+* **📱 Experiencia App-Like:** Animaciones fluidas y controles optimizados para uso móvil.
+* **💾 Persistencia Offline:** Usa `LocalStorage` para mostrar los últimos precios cargados sin internet.
+* **💬 Compartir:** Botón integrado para enviar las tasas por WhatsApp de forma profesional.
 
-💾 Persistencia Offline: Gracias al uso de LocalStorage, puedes ver los últimos precios cargados incluso si no tienes conexión a internet.
+---
 
-💬 Compartir: Botón integrado para enviar las tasas actuales por WhatsApp con un solo toque.
+## 📲 Instalación en Dispositivos Móviles
 
-📲 Instalación en Dispositivos Móviles
-Puedes usar esta herramienta como una aplicación nativa en tu teléfono sin necesidad de descargar nada de la App Store o Play Store:
+Puedes usar esta herramienta como una aplicación nativa en tu teléfono:
 
-En Android (Chrome)
-Abre el enlace en Chrome.
+### **En Android (Chrome)**
+1. Abre el enlace en **Chrome**.
+2. Toca los **tres puntos (⋮)** arriba a la derecha.
+3. Selecciona **"Instalar aplicación"** o **"Añadir a la pantalla de inicio"**.
 
-Toca los tres puntos (⋮) en la esquina superior derecha.
+### **En iOS (Safari)**
+1. Abre el enlace en **Safari**.
+2. Toca el botón de **Compartir** (cuadrado con flecha hacia arriba).
+3. Selecciona **"Añadir a la pantalla de inicio"** (icono `+`).
 
-Selecciona "Instalar aplicación" o "Añadir a la pantalla de inicio".
+---
 
-En iOS (Safari)
-Abre el enlace en Safari.
+## 🛠️ Tecnologías Utilizadas
 
-Toca el botón de Compartir (el icono del cuadrado con la flecha hacia arriba).
+Construido bajo la filosofía de **cero dependencias** (Vanilla JS):
 
-Desliza hacia abajo y selecciona "Añadir a la pantalla de inicio" (icono de +).
+* **HTML5 & CSS3:** Variables CSS (`:root`), Flexbox y efectos de desenfoque.
+* **JavaScript:** Lógica asíncrona para consultas de API y manipulación del DOM.
+* **Persistencia:** Web Storage API.
 
-🛠️ Tecnologías Utilizadas
-El proyecto fue construido bajo la filosofía de cero dependencias (Vanilla JS) para garantizar la máxima velocidad de carga:
+---
 
-HTML5 & CSS3: Uso de variables CSS (:root), Flexbox, Glassmorphism y animaciones cubic-bezier.
+## 👤 Autor
 
-JavaScript: Lógica asíncrona para consultas de API, manipulación del DOM y sistema de logs en consola.
+**Frankstein975**
+* GitHub: [@frankstein975](https://github.com/frankstein975)
+* Web: [Ver Proyecto en Vivo](https://frankstein975.github.io/BCV-consulting/)
 
-Persistencia: Web Storage API.
+---
 
-⚙️ Mantenimiento
-El sistema cuenta con un Modo de Mantenimiento integrado que bloquea la interfaz de forma elegante mediante un overlay con desenfoque (backdrop-filter) mientras se realizan ajustes en los motores de búsqueda de datos.
+## 🧠 Filosofía de Desarrollo: "Vibe Coding"
 
-👤 Autor
-Frankstein975
+Este proyecto ha sido desarrollado bajo el concepto de **Vibe Coding**, con la firme intención de resolver una necesidad cotidiana de forma eficiente y estética. 
 
-GitHub: @frankstein975
+Aunque se ha utilizado inteligencia artificial para agilizar la ejecución, la arquitectura, el refinamiento visual y la lógica crítica han sido **hechos a mano**. Este resultado no sería posible sin la base sólida de **programación humana** obtenida a través de años de estudios, práctica constante y la experiencia técnica necesaria para dirigir, corregir y dar sentido a cada línea de código. Es la unión entre la intuición creativa y el rigor técnico.
 
-Web: BCV Consulting
+---
 
-Nota: Esta herramienta utiliza datos de fuentes públicas y oficiales. Los precios mostrados corresponden exclusivamente a las tasas publicadas por el Banco Central de Venezuela.
+> **Aviso:** Esta herramienta utiliza datos de fuentes públicas. Los precios corresponden a las tasas oficiales publicadas por el Banco Central de Venezuela.
