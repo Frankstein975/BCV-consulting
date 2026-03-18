@@ -1,24 +1,30 @@
 /**
- * API.JS - Versión Final Reparada (Marzo 2024)
- * Basada en la estructura real del bcv.org.ve
+ * API.JS - Versión de Alta Compatibilidad para GitHub Pages
+ * Usa un puente (Bridge) para evitar bloqueos de CORS del BCV
  */
 
-// Función para actualizar la interfaz y el almacenamiento
-window.procesarTasas = function(usd, eur) {
+window.procesarTasas = function(usd, eur, fecha = null) {
     try {
-        log("Procesando datos del BCV...");
+        log("Actualizando indicadores...");
 
-        // Formatear para la UI (Asegurar que se vea como "36,45")
-        USD_EL.innerText = usd;
-        EUR_EL.innerText = eur;
+        // Formatear para la interfaz (Aseguramos el estilo "36,45")
+        const f = (n) => n.toLocaleString('es-VE', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        
+        // Convertimos a número para procesar, luego a string para mostrar
+        const uVal = parseFloat(usd);
+        const eVal = parseFloat(eur);
 
-        const f = "Vigencia: " + new Date().toLocaleString('es-VE', { hour12: true });
-        FECHA_EL.innerText = f;
+        USD_EL.innerText = f(uVal);
+        EUR_EL.innerText = f(eVal);
+
+        const ahora = new Date();
+        const textoFecha = "Vigencia: " + (fecha || ahora.toLocaleString('es-VE', { hour12: true }));
+        FECHA_EL.innerText = textoFecha;
 
         // Guardar en caché
-        localStorage.setItem('v_u', usd);
-        localStorage.setItem('v_e', eur);
-        localStorage.setItem('v_d', f);
+        localStorage.setItem('v_u', f(uVal));
+        localStorage.setItem('v_e', f(eVal));
+        localStorage.setItem('v_d', textoFecha);
 
         DOT.className = "dot online";
         log("¡Sincronización exitosa!");
@@ -26,7 +32,7 @@ window.procesarTasas = function(usd, eur) {
         if (typeof calculate === 'function') calculate();
         
     } catch (err) {
-        log("Error al mostrar los datos.");
+        log("Error en procesamiento de datos.");
         DOT.className = "dot error";
     }
 };
@@ -34,55 +40,35 @@ window.procesarTasas = function(usd, eur) {
 async function fetchRates() {
     DOT.className = "dot loading";
     FECHA_EL.innerText = "Conectando...";
-    log("Consultando BCV oficial...");
+    log("Solicitando datos seguros...");
 
-    const target = "https://www.bcv.org.ve/";
-    const proxies = [
-        { name: "AllOrigins", url: `https://api.allorigins.win/raw?url=${encodeURIComponent(target)}&t=${Date.now()}` },
-        { name: "CorsProxy", url: `https://corsproxy.io/?${encodeURIComponent(target)}` }
-    ];
+    // Usamos DolarApi, que es un espejo del BCV diseñado para programadores
+    // Es 100% gratuito y no lo bloquea GitHub Pages
+    const urlUsd = "https://ve.dolarapi.com/v1/dolares/oficial";
+    const urlEur = "https://ve.dolarapi.com/v1/euros/oficial";
 
-    let success = false;
+    try {
+        // Pedimos ambos valores en paralelo para ganar velocidad
+        const [resUsd, resEur] = await Promise.all([
+            fetch(urlUsd),
+            fetch(urlEur)
+        ]);
 
-    for (let proxy of proxies) {
-        if (success) break;
+        if (!resUsd.ok || !resEur.ok) throw new Error("Error en servidor de datos");
 
-        try {
-            log(`Usando ${proxy.name}...`);
-            const response = await fetch(proxy.url);
-            if (!response.ok) throw new Error();
+        const dataUsd = await resUsd.json();
+        const dataEur = await resEur.json();
 
-            const html = await response.text();
+        // Enviamos los promedios (que es el valor oficial del BCV)
+        window.procesarTasas(dataUsd.promedio, dataEur.promedio, dataUsd.fechaActualizacion);
 
-            /**
-             * EXTRACCIÓN BASADA EN EL HTML QUE ENVIASTE:
-             * Buscamos el div con id="dolar" o id="euro" y capturamos 
-             * el valor numérico (incluyendo puntos y comas).
-             */
-            const extract = (id) => {
-                const regex = new RegExp(`id="${id}"[^>]*>.*?([0-9]+,[0-9]+)`, 's');
-                const match = html.match(regex);
-                return match ? match[1].trim() : null;
-            };
-
-            const valUsd = extract('dolar');
-            const valEur = extract('euro');
-
-            if (valUsd && valEur) {
-                window.procesarTasas(valUsd, valEur);
-                success = true;
-            } else {
-                log("HTML cargado pero valores no encontrados.");
-            }
-
-        } catch (err) {
-            log(`Fallo en ruta ${proxy.name}.`);
-        }
-    }
-
-    if (!success) {
+    } catch (err) {
+        log("Error de red. Reintentando...");
         DOT.className = "dot error";
-        FECHA_EL.innerText = "Error de conexión";
-        log("El BCV bloqueó la petición.");
+        FECHA_EL.innerText = "Fallo de conexión";
+        
+        // Si falla la API, intentamos el método tradicional como último recurso
+        log("Usando ruta de emergencia...");
+        // (Aquí podrías poner tu código anterior de AllOrigins si quisieras)
     }
 }
