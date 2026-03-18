@@ -34,6 +34,15 @@ Puedes usar esta herramienta como una aplicación nativa en tu teléfono:
 
 ---
 
+### 📲 Descarga la App para Android
+Escanea este código QR para ir directamente a la sección de descargas y obtener el APK oficial:
+
+![Código QR de Descarga](https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=https://github.com/frankstein975/BCV-consulting/releases/latest)
+
+> **Nota:** Recuerda activar "Orígenes desconocidos" en tu celular para instalar el APK.
+
+---
+
 ## 🛠️ Tecnologías Utilizadas
 
 Construido bajo la filosofía de **cero dependencias** (Vanilla JS):
