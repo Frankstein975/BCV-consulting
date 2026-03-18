@@ -1,105 +1,91 @@
 /**
- * API.JS - Extracción directa desde BCV.org.ve vía Proxy
+ * API.JS - Edición Especial para GitHub Pages
  */
 
-// Esta función procesa los números y actualiza la UI y el caché
+// 1. Referencias globales (aseguramos que existan)
+const USD_EL = document.getElementById('usd');
+const EUR_EL = document.getElementById('eur');
+const FECHA_EL = document.getElementById('fecha');
+const DOT = document.getElementById('dot');
+
 window.procesarTasas = function(usd, eur, fechaSource = null) {
     try {
-        log("Procesando datos oficiales...");
+        log("Actualizando interfaz...");
 
-        // Convertir strings de tipo "36,45" a números flotantes
-        const u = parseFloat(usd.replace(',', '.'));
-        const e = parseFloat(eur.replace(',', '.'));
+        // Función para limpiar el texto y convertirlo a número usable
+        const limpiar = (txt) => {
+            if (!txt) return 0;
+            // Quitamos todo lo que no sea número o coma
+            let limpio = txt.replace(/[^\d,]/g, '').replace(',', '.');
+            return parseFloat(limpio);
+        };
 
-        if (isNaN(u) || u <= 0) throw new Error("Datos inválidos");
+        const u = limpiar(usd);
+        const e = limpiar(eur);
 
-        // Formatear para mostrar en pantalla (Estilo Venezuela)
-        const uFormateado = u.toLocaleString('es-VE', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-        const eFormateado = e.toLocaleString('es-VE', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        if (!u || isNaN(u)) throw new Error("Datos corruptos");
 
-        // Actualizar Elementos (IDs definidos en ui.js)
-        USD_EL.innerText = uFormateado;
-        EUR_EL.innerText = eFormateado;
-        
-        // Manejo de fecha
+        // Formatear para mostrar
+        const formato = (n) => n.toLocaleString('es-VE', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+
+        USD_EL.innerText = formato(u);
+        EUR_EL.innerText = formato(e);
+
         const ahora = new Date();
-        const fechaLocal = ahora.toLocaleDateString('es-VE') + " " + ahora.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-        FECHA_EL.innerText = "Vigencia: " + (fechaSource || fechaLocal);
+        const textoFecha = fechaSource || ahora.toLocaleDateString('es-VE') + " " + ahora.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+        FECHA_EL.innerText = "Vigencia: " + textoFecha;
 
-        // Guardar en LocalStorage para persistencia
-        localStorage.setItem('v_u', uFormateado);
-        localStorage.setItem('v_e', eFormateado);
+        // Guardar en caché
+        localStorage.setItem('v_u', formato(u));
+        localStorage.setItem('v_e', formato(e));
         localStorage.setItem('v_d', FECHA_EL.innerText);
 
         DOT.className = "dot online";
-        log("¡Sincronización exitosa!");
-        
-        // Si la calculadora está abierta en ui.js, que se actualice
-        if(typeof calculate === 'function') calculate();
-        
+        log("¡Sincronizado con éxito!");
+
+        if (typeof calculate === 'function') calculate();
+
     } catch (err) {
-        log("Error en formato de datos.");
+        log("Error al procesar números.");
         DOT.className = "dot error";
     }
 };
 
-/**
- * Función principal de consulta (Llamada desde ui.js)
- */
 async function fetchRates() {
     DOT.className = "dot loading";
-    FECHA_EL.innerText = "Consultando...";
-    log("Iniciando conexión BCV...");
+    FECHA_EL.innerText = "Conectando...";
+    log("Solicitando datos al BCV...");
 
+    // Usaremos AllOrigins pero con el formato JSON para saltar restricciones de tipo de contenido
     const target = "https://www.bcv.org.ve/";
-    
-    // Lista de proxies para evitar bloqueos de CORS
-    const proxies = [
-        { name: "CorsProxy.io", url: `https://corsproxy.io/?${encodeURIComponent(target)}` },
-        { name: "AllOrigins", url: `https://api.allorigins.win/raw?url=${encodeURIComponent(target)}&t=${Date.now()}` }
-    ];
+    const proxy = `https://api.allorigins.win/get?url=${encodeURIComponent(target)}&timestamp=${Date.now()}`;
 
-    let success = false;
+    try {
+        const response = await fetch(proxy);
+        if (!response.ok) throw new Error("Proxy falló");
+        
+        const data = await response.json();
+        const html = data.contents; // El HTML viene dentro del JSON
 
-    for (const proxy of proxies) {
-        if (success) break;
+        // Buscamos el valor justo después de los IDs 'dolar' y 'euro'
+        const extraer = (id) => {
+            const regex = new RegExp(`id="${id}"[^>]*>.*?([0-9]+,[0-9]+)`, 'i');
+            const match = html.match(regex);
+            return match ? match[1] : null;
+        };
 
-        try {
-            log(`Probando: ${proxy.name}...`);
-            
-            const controller = new AbortController();
-            const timeout = setTimeout(() => controller.abort(), 6000); // 6 segundos de espera
-            
-            const response = await fetch(proxy.url, { signal: controller.signal });
-            clearTimeout(timeout);
+        const valUsd = extraer('dolar');
+        const valEur = extraer('euro');
 
-            if (!response.ok) throw new Error();
-
-            const html = await response.text();
-            
-            // --- Lógica de Extracción (Regex) ---
-            // Buscamos los contenedores específicos del BCV para Dólar y Euro
-            const extract = (id) => {
-                const regex = new RegExp(`<div[^>]*id="${id}"[^>]*>.*?<strong>\\s*([0-9,.]+)\\s*</strong>`, 's');
-                const match = html.match(regex);
-                return match ? match[1].trim() : null;
-            };
-
-            const usd = extract('dolar');
-            const eur = extract('euro');
-
-            if (usd && eur) {
-                window.procesarTasas(usd, eur);
-                success = true;
-            }
-
-        } catch (err) {
-            log(`${proxy.name} falló o fue muy lento.`);
+        if (valUsd && valEur) {
+            window.procesarTasas(valUsd, valEur);
+        } else {
+            log("BCV cambió su diseño. Revisa los IDs.");
+            DOT.className = "dot error";
         }
-    }
 
-    if (!success) {
-        log("Todas las rutas fallaron. Intente más tarde.");
+    } catch (err) {
+        log("Error de red. BCV inaccesible.");
         DOT.className = "dot error";
         FECHA_EL.innerText = "Error de conexión";
     }
