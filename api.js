@@ -1,101 +1,88 @@
 /**
- * API.JS - Extracción directa desde BCV.org.ve (Versión Reparada)
+ * API.JS - Versión Final Reparada (Marzo 2024)
+ * Basada en la estructura real del bcv.org.ve
  */
 
-window.procesarTasas = function(usd, eur, fechaSource = null) {
+// Función para actualizar la interfaz y el almacenamiento
+window.procesarTasas = function(usd, eur) {
     try {
-        log("Procesando datos oficiales...");
+        log("Procesando datos del BCV...");
 
-        // Limpieza de strings y conversión
-        const u = parseFloat(usd.replace(/\./g, '').replace(',', '.'));
-        const e = parseFloat(eur.replace(/\./g, '').replace(',', '.'));
+        // Formatear para la UI (Asegurar que se vea como "36,45")
+        USD_EL.innerText = usd;
+        EUR_EL.innerText = eur;
 
-        if (isNaN(u) || u <= 0) throw new Error("Datos inválidos");
+        const f = "Vigencia: " + new Date().toLocaleString('es-VE', { hour12: true });
+        FECHA_EL.innerText = f;
 
-        const uFormateado = u.toLocaleString('es-VE', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-        const eFormateado = e.toLocaleString('es-VE', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-
-        USD_EL.innerText = uFormateado;
-        EUR_EL.innerText = eFormateado;
-        
-        const ahora = new Date();
-        const fechaLocal = ahora.toLocaleDateString('es-VE') + " " + ahora.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-        FECHA_EL.innerText = "Vigencia: " + (fechaSource || fechaLocal);
-
-        localStorage.setItem('v_u', uFormateado);
-        localStorage.setItem('v_e', eFormateado);
-        localStorage.setItem('v_d', FECHA_EL.innerText);
+        // Guardar en caché
+        localStorage.setItem('v_u', usd);
+        localStorage.setItem('v_e', eur);
+        localStorage.setItem('v_d', f);
 
         DOT.className = "dot online";
         log("¡Sincronización exitosa!");
-        
-        if(typeof calculate === 'function') calculate();
+
+        if (typeof calculate === 'function') calculate();
         
     } catch (err) {
-        log("Error en formato de datos.");
+        log("Error al mostrar los datos.");
         DOT.className = "dot error";
     }
 };
 
 async function fetchRates() {
     DOT.className = "dot loading";
-    FECHA_EL.innerText = "Consultando...";
-    log("Iniciando conexión BCV...");
+    FECHA_EL.innerText = "Conectando...";
+    log("Consultando BCV oficial...");
 
     const target = "https://www.bcv.org.ve/";
     const proxies = [
-        { name: "CorsProxy.io", url: `https://corsproxy.io/?${encodeURIComponent(target)}` },
-        { name: "AllOrigins", url: `https://api.allorigins.win/raw?url=${encodeURIComponent(target)}&t=${Date.now()}` }
+        { name: "AllOrigins", url: `https://api.allorigins.win/raw?url=${encodeURIComponent(target)}&t=${Date.now()}` },
+        { name: "CorsProxy", url: `https://corsproxy.io/?${encodeURIComponent(target)}` }
     ];
 
     let success = false;
 
-    for (const proxy of proxies) {
+    for (let proxy of proxies) {
         if (success) break;
 
         try {
-            log(`Probando: ${proxy.name}...`);
-            
-            const controller = new AbortController();
-            const timeout = setTimeout(() => controller.abort(), 8000); 
-            
-            const response = await fetch(proxy.url, { signal: controller.signal });
-            clearTimeout(timeout);
-
+            log(`Usando ${proxy.name}...`);
+            const response = await fetch(proxy.url);
             if (!response.ok) throw new Error();
 
             const html = await response.text();
-            
+
             /**
-             * NUEVA LÓGICA DE EXTRACCIÓN (REPARADA)
-             * Buscamos el ID y agarramos el primer número que aparezca después,
-             * sin importar si está dentro de un <strong>, <span> o texto plano.
+             * EXTRACCIÓN BASADA EN EL HTML QUE ENVIASTE:
+             * Buscamos el div con id="dolar" o id="euro" y capturamos 
+             * el valor numérico (incluyendo puntos y comas).
              */
             const extract = (id) => {
-                // Busca el id y captura el primer número con coma que encuentre cerca
                 const regex = new RegExp(`id="${id}"[^>]*>.*?([0-9]+,[0-9]+)`, 's');
                 const match = html.match(regex);
                 return match ? match[1].trim() : null;
             };
 
-            const usd = extract('dolar');
-            const eur = extract('euro');
+            const valUsd = extract('dolar');
+            const valEur = extract('euro');
 
-            if (usd && eur) {
-                window.procesarTasas(usd, eur);
+            if (valUsd && valEur) {
+                window.procesarTasas(valUsd, valEur);
                 success = true;
             } else {
-                log(`Fallo: No se encontró el valor en el HTML.`);
+                log("HTML cargado pero valores no encontrados.");
             }
 
         } catch (err) {
-            log(`${proxy.name} falló o bloqueado.`);
+            log(`Fallo en ruta ${proxy.name}.`);
         }
     }
 
     if (!success) {
-        log("Error: BCV no responde a los proxies.");
         DOT.className = "dot error";
         FECHA_EL.innerText = "Error de conexión";
+        log("El BCV bloqueó la petición.");
     }
 }
