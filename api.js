@@ -1,40 +1,40 @@
-// --- Lógica de Obtención de Datos BCV Real ---
-
 /**
- * Procesa los datos crudos y actualiza los elementos del DOM.
- * Se comunica con las funciones de interfaz a través de los IDs.
+ * API.JS - Extracción directa desde BCV.org.ve vía Proxy
  */
+
+// Esta función procesa los números y actualiza la UI y el caché
 window.procesarTasas = function(usd, eur, fechaSource = null) {
     try {
         log("Procesando datos oficiales...");
 
-        // Aseguramos que sean números
-        const u = parseFloat(usd);
-        const e = parseFloat(eur);
+        // Convertir strings de tipo "36,45" a números flotantes
+        const u = parseFloat(usd.replace(',', '.'));
+        const e = parseFloat(eur.replace(',', '.'));
 
-        if (isNaN(u) || u <= 0) throw new Error("Datos de moneda no válidos");
+        if (isNaN(u) || u <= 0) throw new Error("Datos inválidos");
 
-        // Formateo para Venezuela
+        // Formatear para mostrar en pantalla (Estilo Venezuela)
         const uFormateado = u.toLocaleString('es-VE', {minimumFractionDigits: 2, maximumFractionDigits: 2});
         const eFormateado = e.toLocaleString('es-VE', {minimumFractionDigits: 2, maximumFractionDigits: 2});
 
-        // Actualización de Interfaz
+        // Actualizar Elementos (IDs definidos en ui.js)
         USD_EL.innerText = uFormateado;
         EUR_EL.innerText = eFormateado;
         
-        // Priorizar fecha de la fuente o generar actual
-        const fechaFinal = fechaSource ? fechaSource : new Date().toLocaleString('es-VE', { hour12: true });
-        FECHA_EL.innerText = "Vigencia: " + fechaFinal;
+        // Manejo de fecha
+        const ahora = new Date();
+        const fechaLocal = ahora.toLocaleDateString('es-VE') + " " + ahora.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+        FECHA_EL.innerText = "Vigencia: " + (fechaSource || fechaLocal);
 
-        // Guardado en Caché
+        // Guardar en LocalStorage para persistencia
         localStorage.setItem('v_u', uFormateado);
         localStorage.setItem('v_e', eFormateado);
         localStorage.setItem('v_d', FECHA_EL.innerText);
 
         DOT.className = "dot online";
-        log("¡Conexión exitosa!");
+        log("¡Sincronización exitosa!");
         
-        // Disparar recálculo si la calculadora está abierta
+        // Si la calculadora está abierta en ui.js, que se actualice
         if(typeof calculate === 'function') calculate();
         
     } catch (err) {
@@ -44,57 +44,63 @@ window.procesarTasas = function(usd, eur, fechaSource = null) {
 };
 
 /**
- * Intenta obtener las tasas desde la fuente más estable (DolarApi)
- * que permite obtener USD y EUR por separado sin cálculos aproximados.
+ * Función principal de consulta (Llamada desde ui.js)
  */
 async function fetchRates() {
     DOT.className = "dot loading";
-    FECHA_EL.innerText = "Sincronizando...";
-    log("Consultando BCV...");
+    FECHA_EL.innerText = "Consultando...";
+    log("Iniciando conexión BCV...");
 
-    try {
-        // Consultamos Dólar y Euro en paralelo para velocidad
-        const [resUsd, resEur] = await Promise.all([
-            fetch('https://ve.dolarapi.com/v1/dolares/oficial', { cache: 'no-store' }),
-            fetch('https://ve.dolarapi.com/v1/euro/oficial', { cache: 'no-store' })
-        ]);
-
-        if (resUsd.ok && resEur.ok) {
-            const dataUsd = await resUsd.json();
-            const dataEur = await resEur.json();
-            window.procesarTasas(dataUsd.promedio, dataEur.promedio);
-        } else {
-            throw new Error();
-        }
-    } catch (e) {
-        log("Fuente principal fallida. Intentando respaldo...");
-        fetchBackupPyDolar();
-    }
-}
-
-/**
- * Fuente de respaldo mediante inyección de Script (Bypass de CORS)
- */
-function fetchBackupPyDolar() {
-    const oldScript = document.getElementById('api-script');
-    if (oldScript) oldScript.remove();
-
-    const script = document.createElement('script');
-    script.id = 'api-script';
-    // Endpoint directo a BCV
-    script.src = `https://pydolarve.org/api/v1/dollar?key=bcv&callback=callbackPyDolar&t=${Date.now()}`;
+    const target = "https://www.bcv.org.ve/";
     
-    window.callbackPyDolar = (data) => {
-        try {
-            const u = data.monedas.usd.price;
-            const e = data.monedas.eur.price;
-            const f = data.datetime.fecha;
-            window.procesarTasas(u, e, f);
-        } catch (err) {
-            log("Fallo total de red.");
-            DOT.className = "dot error";
-        }
-    };
+    // Lista de proxies para evitar bloqueos de CORS
+    const proxies = [
+        { name: "CorsProxy.io", url: `https://corsproxy.io/?${encodeURIComponent(target)}` },
+        { name: "AllOrigins", url: `https://api.allorigins.win/raw?url=${encodeURIComponent(target)}&t=${Date.now()}` }
+    ];
 
-    document.body.appendChild(script);
+    let success = false;
+
+    for (const proxy of proxies) {
+        if (success) break;
+
+        try {
+            log(`Probando: ${proxy.name}...`);
+            
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 6000); // 6 segundos de espera
+            
+            const response = await fetch(proxy.url, { signal: controller.signal });
+            clearTimeout(timeout);
+
+            if (!response.ok) throw new Error();
+
+            const html = await response.text();
+            
+            // --- Lógica de Extracción (Regex) ---
+            // Buscamos los contenedores específicos del BCV para Dólar y Euro
+            const extract = (id) => {
+                const regex = new RegExp(`<div[^>]*id="${id}"[^>]*>.*?<strong>\\s*([0-9,.]+)\\s*</strong>`, 's');
+                const match = html.match(regex);
+                return match ? match[1].trim() : null;
+            };
+
+            const usd = extract('dolar');
+            const eur = extract('euro');
+
+            if (usd && eur) {
+                window.procesarTasas(usd, eur);
+                success = true;
+            }
+
+        } catch (err) {
+            log(`${proxy.name} falló o fue muy lento.`);
+        }
+    }
+
+    if (!success) {
+        log("Todas las rutas fallaron. Intente más tarde.");
+        DOT.className = "dot error";
+        FECHA_EL.innerText = "Error de conexión";
+    }
 }
