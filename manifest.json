@@ -1,0 +1,24 @@
+{
+  "name": "BCV Consulting",
+  "short_name": "BCV",
+  "description": "Consulta de tasas oficiales del Banco Central de Venezuela",
+  "start_url": "https://frankstein975.github.io/BCV-consulting/",
+  "display": "standalone",
+  "background_color": "#050505",
+  "theme_color": "#050505",
+  "orientation": "portrait",
+  "scope": "/BCV-consulting/",
+  "icons": [
+    {
+      "src": "https://frankstein975.github.io/BCV-consulting/favicon.ico",
+      "sizes": "64x64",
+      "type": "image/x-icon"
+    },
+    {
+      "src": "https://frankstein975.github.io/BCV-consulting/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
