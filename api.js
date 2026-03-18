@@ -1,34 +1,52 @@
 /**
- * API.JS - Versión de Alta Compatibilidad para GitHub Pages
- * Usa un puente (Bridge) para evitar bloqueos de CORS del BCV
+ * API.JS - Versión Final Estable para GitHub Pages
+ * Con corrección de formato de fecha ISO a Humano
  */
 
-window.procesarTasas = function(usd, eur, fecha = null) {
+// Función para procesar y mostrar los datos en la interfaz
+window.procesarTasas = function(usd, eur, fecha) {
     try {
         log("Actualizando indicadores...");
 
-        // Formatear para la interfaz (Aseguramos el estilo "36,45")
-        const f = (n) => n.toLocaleString('es-VE', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        // Formateador para moneda local (Ej: 36,45)
+        const fNum = (n) => n.toLocaleString('es-VE', {
+            minimumFractionDigits: 2, 
+            maximumFractionDigits: 2
+        });
         
-        // Convertimos a número para procesar, luego a string para mostrar
         const uVal = parseFloat(usd);
         const eVal = parseFloat(eur);
 
-        USD_EL.innerText = f(uVal);
-        EUR_EL.innerText = f(eVal);
+        if (isNaN(uVal)) throw new Error("Precio inválido");
 
-        const ahora = new Date();
-        const textoFecha = "Vigencia: " + (fecha || ahora.toLocaleString('es-VE', { hour12: true }));
-        FECHA_EL.innerText = textoFecha;
+        // Actualizar UI
+        USD_EL.innerText = fNum(uVal);
+        EUR_EL.innerText = fNum(eVal);
 
-        // Guardar en caché
-        localStorage.setItem('v_u', f(uVal));
-        localStorage.setItem('v_e', f(eVal));
-        localStorage.setItem('v_d', textoFecha);
+        // --- LIMPIEZA DE FECHA (De ISO a DD/MM/AAAA) ---
+        let fechaLimpia = "";
+        if (fecha && fecha.includes('T')) {
+            // "2026-03-18T00:00:00-04:00" -> ["2026-03-18", "00:00:00-04:00"]
+            const soloFecha = fecha.split('T')[0]; 
+            const partes = soloFecha.split('-'); // ["2026", "03", "18"]
+            fechaLimpia = `${partes[2]}/${partes[1]}/${partes[0]}`; // 18/03/2026
+        } else {
+            const ahora = new Date();
+            fechaLimpia = ahora.toLocaleDateString('es-VE');
+        }
+
+        const textoVigencia = "Vigencia: " + fechaLimpia;
+        FECHA_EL.innerText = textoVigencia;
+
+        // Guardar en LocalStorage para persistencia
+        localStorage.setItem('v_u', fNum(uVal));
+        localStorage.setItem('v_e', fNum(eVal));
+        localStorage.setItem('v_d', textoVigencia);
 
         DOT.className = "dot online";
         log("¡Sincronización exitosa!");
 
+        // Ejecutar cálculo si la calculadora está abierta
         if (typeof calculate === 'function') calculate();
         
     } catch (err) {
@@ -37,38 +55,33 @@ window.procesarTasas = function(usd, eur, fecha = null) {
     }
 };
 
+// Función principal de consulta (Llamada desde ui.js)
 async function fetchRates() {
     DOT.className = "dot loading";
     FECHA_EL.innerText = "Conectando...";
     log("Solicitando datos seguros...");
 
-    // Usamos DolarApi, que es un espejo del BCV diseñado para programadores
-    // Es 100% gratuito y no lo bloquea GitHub Pages
+    // Endpoints de DolarApi (Espejo oficial BCV)
     const urlUsd = "https://ve.dolarapi.com/v1/dolares/oficial";
     const urlEur = "https://ve.dolarapi.com/v1/euros/oficial";
 
     try {
-        // Pedimos ambos valores en paralelo para ganar velocidad
         const [resUsd, resEur] = await Promise.all([
             fetch(urlUsd),
             fetch(urlEur)
         ]);
 
-        if (!resUsd.ok || !resEur.ok) throw new Error("Error en servidor de datos");
+        if (!resUsd.ok || !resEur.ok) throw new Error("Servidor no responde");
 
         const dataUsd = await resUsd.json();
         const dataEur = await resEur.json();
 
-        // Enviamos los promedios (que es el valor oficial del BCV)
+        // Enviamos los datos a procesar
         window.procesarTasas(dataUsd.promedio, dataEur.promedio, dataUsd.fechaActualizacion);
 
     } catch (err) {
-        log("Error de red. Reintentando...");
+        log("Error de red. Verifique conexión.");
         DOT.className = "dot error";
         FECHA_EL.innerText = "Fallo de conexión";
-        
-        // Si falla la API, intentamos el método tradicional como último recurso
-        log("Usando ruta de emergencia...");
-        // (Aquí podrías poner tu código anterior de AllOrigins si quisieras)
     }
 }
